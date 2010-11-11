@@ -76,7 +76,7 @@ struct VM {
    
 	VM();
 	void create();
-	void start();
+	void start(bool vrdp);
 	void kill();
 	void stop();
 	void resume();
@@ -302,10 +302,23 @@ void VM::create() {
 
 }
 
-void VM::start() {
+void VM::start(bool vrdp=false) {
+    // Start the VM in headless mode
 	string arg_list="";
     arg_list=" startvm "+ virtual_machine_name + " --type headless";
 	vbm_popen(arg_list);
+    // Enable or disable VRDP for the VM: (by default is disabled)
+    if (vrdp)
+    {
+        arg_list = "";
+        arg_list = " controlvm " + virtual_machine_name + " vrdp on";
+    }
+    else
+    {
+        arg_list = "";
+        arg_list = " controlvm " + virtual_machine_name + " vrdp off";
+    }
+    vbm_popen(arg_list);
 }
 
 void VM::kill() {
@@ -487,6 +500,7 @@ int main(int argc, char** argv) {
 	char buffer[256];
 	unsigned int i;
 	bool graphics = false;
+    bool vrdp = false;
 	for (i=1; i<(unsigned int)argc; i++) {
 	if (!strcmp(argv[i], "--graphics")) {
 	    graphics = true;
@@ -541,7 +555,7 @@ int main(int argc, char** argv) {
 
 	read_cputime(cpu_time);
 	vm.current_period=cpu_time;
-	vm.start();
+	vm.start(vrdp);
 	vm.last_poll_point = time(NULL);
 	while (1) {
 		poll_boinc_messages(vm);
