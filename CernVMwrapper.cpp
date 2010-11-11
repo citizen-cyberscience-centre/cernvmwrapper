@@ -226,10 +226,10 @@ VM::VM(){
 //	fprintf(stderr, "%s\n",disk_path.c_str());
 
 	name_path="";
-	boinc_get_init_data(aid);
-	name_path += aid.project_dir;
-	name_path += "/";
-	name_path+=VM_NAME;
+	//boinc_get_init_data(aid);
+	//name_path += aid.project_dir;
+	//name_path += "/";
+	name_path += VM_NAME;
 }	
 
 void VM::create() {
@@ -292,7 +292,7 @@ void VM::create() {
 		boinc_finish(1);
 	}
 
-
+    // Write down the name of the virtual machine in a file called VM_NAME
 	if((fp=fopen(name_path.c_str(),"w"))==NULL){
 		fprintf(stderr,"fopen failed!\n");
 		boinc_finish(1);
@@ -497,10 +497,11 @@ int main(int argc, char** argv) {
 	BOINC_OPTIONS options;
 	double cpu_time=0;
 	FILE*fp;
-	char buffer[256];
+    char buffer[2048]; // Enough size for the VBoxManage list vms output
 	unsigned int i;
 	bool graphics = false;
     bool vrdp = false;
+    bool vm_name = false;
 	for (i=1; i<(unsigned int)argc; i++) {
 	if (!strcmp(argv[i], "--graphics")) {
 	    graphics = true;
@@ -518,7 +519,17 @@ int main(int argc, char** argv) {
 	 boinc_init_options(&options);
 
 	VM vm;
-	if(boinc_file_exists(vm.name_path.c_str())){
+    // We check if the VM has already been created and launched
+    if (fp=fopen("VMName","r"))
+    {
+        fclose(fp);
+        vm_name = true;
+    }
+    else vm_name= false;
+
+    if (vm_name)
+    {
+        fprintf(stderr,"VMName exists\n");
 		bool VMexist=false;
 		string arg_list;
 		if((fp=fopen(vm.name_path.c_str(),"r"))==NULL){
@@ -527,6 +538,10 @@ int main(int argc, char** argv) {
 		}
 		if(fgets(buffer,256,fp)) vm.virtual_machine_name=buffer;
 		fclose(fp);
+        
+        // DEBUG for the name of the VM
+        // fprintf(stderr,"Name of the VM:\n");
+        // fprintf(stderr,vm.virtual_machine_name.c_str());
 
 		arg_list="";
 		arg_list=" list vms";
@@ -536,6 +551,10 @@ int main(int argc, char** argv) {
 		}
 
 		string VMlist=buffer;
+        // DEBUG for the list of running VMs
+        // fprintf(stderr,"List of running VMs:\n");
+        // fprintf(stderr,VMlist.c_str());
+        // fprintf(stderr,"\n");
 		if(VMlist.find(vm.virtual_machine_name.c_str()) != string::npos){
 			VMexist=true;
 		}
