@@ -304,9 +304,7 @@ void VM::create() {
 
 void VM::start() {
 	string arg_list="";
-	//arg_list="--startvm "+virtual_machine_name + " --vrdp off";
-	//vbm_popen(arg_list,NULL,1024,"VBoxHeadless ");
-	arg_list=" startvm "+virtual_machine_name;
+    arg_list=" startvm "+ virtual_machine_name + " --type headless";
 	vbm_popen(arg_list);
 }
 
