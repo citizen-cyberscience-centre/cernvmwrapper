@@ -29,6 +29,7 @@
 #include <string>
 #include <time.h>
 # include <stdlib.h>
+#include "zlib.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -88,6 +89,25 @@ struct VM {
 };
 void write_cputime(double);
 APP_INIT_DATA aid;
+
+
+int unzip (const char *infilename, const char *outfilename)
+{
+    gzFile infile = gzopen(infilename, "rb");
+    FILE *outfile = fopen(outfilename, "wb");
+    if (!infile || !outfile) return -1;
+
+    char buffer[128];
+    int num_read = 0;
+
+    while ((num_read = gzread(infile, buffer, sizeof(buffer))) > 0)
+    {
+        fwrite(buffer, 1, num_read, outfile);
+    }
+
+    gzclose(infile);
+    fclose(outfile);
+}
 
 #ifdef _WIN32
 bool IsWinNT()  //check if we're running NT
@@ -215,10 +235,11 @@ VM::VM(){
 	suspended=false;
 	last_poll_point=0;
 	
-	boinc_resolve_filename_s("cernvm.vmdk",disk_path);
+	//boinc_resolve_filename_s("cernvm.vmdk.gz",disk_path);
 //	fprintf(stderr,"%s\n",disk_path.c_str());
 //	relative_to_absolute(buffer,(char*)disk_path.c_str());
 	boinc_getcwd(buffer);
+    disk_path = "cernvm.vmdk";
 	disk_path="/"+disk_path;
 	disk_path=buffer+disk_path;
 	disk_path="\""+disk_path+"\"";
@@ -289,6 +310,9 @@ void VM::create() {
 			+disk_path;
 	if(!vbm_popen(arg_list)){
 		fprintf(stderr,"Create storageattach failed!\n");
+        //DEBUG for knowing which filename is being used
+        //fprintf(stderr,disk_path.c_str());
+        //fprintf(stderr,"\n");
 		boinc_finish(1);
 	}
 
@@ -502,6 +526,11 @@ int main(int argc, char** argv) {
 	bool graphics = false;
     bool vrdp = false;
     bool vm_name = false;
+    bool retval = false;
+    // Name for the VM vmdk filename
+    string cernvm = "cernvm.vmdk";
+    string resolved_name;
+
 	for (i=1; i<(unsigned int)argc; i++) {
 	if (!strcmp(argv[i], "--graphics")) {
 	    graphics = true;
@@ -525,7 +554,16 @@ int main(int argc, char** argv) {
         fclose(fp);
         vm_name = true;
     }
-    else vm_name= false;
+    else
+    {
+        // Decompress the VM.gz file
+        fprintf(stderr,"Decompressing the VM\n");
+        retval = boinc_resolve_filename_s("cernvm.vmdk.gz",resolved_name);
+        if (retval) fprintf(stderr,"can't resolve cernvm.vmdk.gz filename");
+        unzip(resolved_name.c_str(),cernvm.c_str());
+        fprintf(stderr,"Uncompressed finished\n");
+        vm_name= false;
+    }
 
     if (vm_name)
     {
