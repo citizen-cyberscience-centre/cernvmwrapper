@@ -22,7 +22,9 @@
 // - suspend/resume/quit/abort virtual machine 
 // - reporting CPU time through trickle massages
 //
-// Contributor: Jie Wu (jiewu@cern.ch)
+// Contributor: Jie Wu <jiewu AT cern DOT ch>
+//
+// Contributor: Daniel Lombraña González <teleyinex AT gmail DOT com>
 
 #include <stdio.h>
 #include <vector>
@@ -33,6 +35,7 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#include <tchar.h>
 #include <stdio.h>
 #include <conio.h>
 #include <string.h>
@@ -66,26 +69,26 @@ using std::vector;
 using std::string;
 
 struct VM {
-	string virtual_machine_name;
-	string disk_path;
-	string name_path;
+    string virtual_machine_name;
+    string disk_path;
+    string name_path;
 
-	double current_period;
-	time_t last_poll_point;
-		
-	bool suspended;
+    double current_period;
+    time_t last_poll_point;
+        
+    bool suspended;
    
-	VM();
-	void create();
-	void start(bool vrdp);
-	void kill();
-	void stop();
-	void resume();
-	void check();    
-	void remove();
-	void release(); //release the virtual disk
-	int send_cputime_message();
-	void poll();
+    VM();
+    void create();
+    void start(bool vrdp);
+    void kill();
+    void stop();
+    void resume();
+    void check();    
+    void remove();
+    void release(); //release the virtual disk
+    int send_cputime_message();
+    void poll();
 };
 void write_cputime(double);
 APP_INIT_DATA aid;
@@ -120,217 +123,217 @@ bool IsWinNT()  //check if we're running NT
 #endif
 
 bool vbm_popen(string arg_list,
-			   char * buffer=NULL, 
-			   int nSize=1024,
-			   string command="VBoxManage -q "){
+               char * buffer=NULL, 
+               int nSize=1024,
+               string command="VBoxManage -q "){
 //when buffer is NULL, this function will not return the input of new process.
 //Otherwise, it will not redirect the input of new process to buffer
 #ifdef _WIN32
-	STARTUPINFO si;
-	SECURITY_ATTRIBUTES sa;
-	SECURITY_DESCRIPTOR sd;               //security information for pipes
-	PROCESS_INFORMATION pi;
-	HANDLE newstdout,read_stdout;  //pipe handles
-	unsigned long exit=0;
-	if(buffer!=0){
-		if (IsWinNT())        //initialize security descriptor (Windows NT)
-		{
-		InitializeSecurityDescriptor(&sd,SECURITY_DESCRIPTOR_REVISION);
-		SetSecurityDescriptorDacl(&sd, true, NULL, false);
-		sa.lpSecurityDescriptor = &sd;
-		}
-		else sa.lpSecurityDescriptor = NULL;
-		sa.nLength = sizeof(SECURITY_ATTRIBUTES);
-		sa.bInheritHandle = true;         //allow inheritable handles
+    STARTUPINFO si;
+    SECURITY_ATTRIBUTES sa;
+    SECURITY_DESCRIPTOR sd;               //security information for pipes
+    PROCESS_INFORMATION pi;
+    HANDLE newstdout,read_stdout;  //pipe handles
+    unsigned long exit=0;
+    if(buffer!=0){
+        if (IsWinNT())        //initialize security descriptor (Windows NT)
+        {
+        InitializeSecurityDescriptor(&sd,SECURITY_DESCRIPTOR_REVISION);
+        SetSecurityDescriptorDacl(&sd, true, NULL, false);
+        sa.lpSecurityDescriptor = &sd;
+        }
+        else sa.lpSecurityDescriptor = NULL;
+        sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+        sa.bInheritHandle = true;         //allow inheritable handles
 
-		if (!CreatePipe(&read_stdout,&newstdout,&sa,0))  //create stdout pipe
-		{
-			fprintf(stderr,"CreatePipe Failed\n");
-			CloseHandle(newstdout);
-			CloseHandle(read_stdout);
-			return false;
-		}
-	}
-	GetStartupInfo(&si);
-	si.dwFlags = STARTF_USESHOWWINDOW;
-	si.wShowWindow = SW_HIDE;
-	if(buffer!=NULL){
-		si.dwFlags = STARTF_USESTDHANDLES|si.dwFlags;
-		si.hStdOutput = newstdout;
-		si.hStdError = newstdout;   //set the new handles for the child process
-		si.hStdInput = NULL;
-	}
+        if (!CreatePipe(&read_stdout,&newstdout,&sa,0))  //create stdout pipe
+        {
+            fprintf(stderr,"CreatePipe Failed\n");
+            CloseHandle(newstdout);
+            CloseHandle(read_stdout);
+            return false;
+        }
+    }
+    GetStartupInfo(&si);
+    si.dwFlags = STARTF_USESHOWWINDOW;
+    si.wShowWindow = SW_HIDE;
+    if(buffer!=NULL){
+        si.dwFlags = STARTF_USESTDHANDLES|si.dwFlags;
+        si.hStdOutput = newstdout;
+        si.hStdError = newstdout;   //set the new handles for the child process
+        si.hStdInput = NULL;
+    }
 
-	command+=arg_list;
-	if (!CreateProcess( NULL,
-						(LPTSTR)command.c_str(),
-						NULL,
-						NULL,
-						TRUE,
-						CREATE_NO_WINDOW,
-						NULL,
-						NULL,
-						&si,
-						&pi))
-	{
-		fprintf(stderr,"CreateProcess Failed!");
-		if(buffer!=NULL){
-			CloseHandle(newstdout);
-			CloseHandle(read_stdout);
-		}
-		return false;
-	}
-	while(1)     
-	{
-		GetExitCodeProcess(pi.hProcess,&exit); //while the process is running
-		if (exit != STILL_ACTIVE)
-		  break;
-	}
-	CloseHandle(pi.hThread);
-	CloseHandle(pi.hProcess);
-	if(buffer!=NULL){
-		memset(buffer,0,nSize);
-		DWORD bread;
-		ReadFile(read_stdout,buffer,nSize-1,&bread,NULL);
-//		buffer[bread]=0;
-		CloseHandle(newstdout);
-		CloseHandle(read_stdout);
-	}
+    command+=arg_list;
+    if (!CreateProcess( NULL,
+                        (LPTSTR)command.c_str(),
+                        NULL,
+                        NULL,
+                        TRUE,
+                        CREATE_NO_WINDOW,
+                        NULL,
+                        NULL,
+                        &si,
+                        &pi))
+    {
+        fprintf(stderr,"CreateProcess Failed!");
+        if(buffer!=NULL){
+            CloseHandle(newstdout);
+            CloseHandle(read_stdout);
+        }
+        return false;
+    }
+    while(1)     
+    {
+        GetExitCodeProcess(pi.hProcess,&exit); //while the process is running
+        if (exit != STILL_ACTIVE)
+          break;
+    }
+    CloseHandle(pi.hThread);
+    CloseHandle(pi.hProcess);
+    if(buffer!=NULL){
+        memset(buffer,0,nSize);
+        DWORD bread;
+        ReadFile(read_stdout,buffer,nSize-1,&bread,NULL);
+//      buffer[bread]=0;
+        CloseHandle(newstdout);
+        CloseHandle(read_stdout);
+    }
 
-	if(exit==0) 
-		return true;
-	else
-		return false;
+    if(exit==0) 
+        return true;
+    else
+        return false;
 #else     //linux
-	FILE* fp;
-	char temp[256];
-	string strTemp="";
-	command+=arg_list;
-	if(buffer==NULL){
-		if(!system(command.c_str()))
-			return true;
-		else return false;
-	}
+    FILE* fp;
+    char temp[256];
+    string strTemp="";
+    command+=arg_list;
+    if(buffer==NULL){
+        if(!system(command.c_str()))
+            return true;
+        else return false;
+    }
 
-	fp = popen(command.c_str(),"r");
-	if (fp == NULL){
-		fprintf(stderr,"vbm_popen popen failed!\n");
-		return false;
-	}
-	memset(buffer,0,nSize);
-	while (fgets(temp,256,fp) != NULL){
-		strTemp+=temp;
-	}
-	pclose(fp);
-	strncpy(buffer,strTemp.c_str(),nSize-1);
-	return true;
+    fp = popen(command.c_str(),"r");
+    if (fp == NULL){
+        fprintf(stderr,"vbm_popen popen failed!\n");
+        return false;
+    }
+    memset(buffer,0,nSize);
+    while (fgets(temp,256,fp) != NULL){
+        strTemp+=temp;
+    }
+    pclose(fp);
+    strncpy(buffer,strTemp.c_str(),nSize-1);
+    return true;
 #endif
 }
 
 VM::VM(){
-	char buffer[256];
+    char buffer[256];
 
-	virtual_machine_name="";
-	current_period=0;
-	suspended=false;
-	last_poll_point=0;
-	
-	//boinc_resolve_filename_s("cernvm.vmdk.gz",disk_path);
-//	fprintf(stderr,"%s\n",disk_path.c_str());
-//	relative_to_absolute(buffer,(char*)disk_path.c_str());
-	boinc_getcwd(buffer);
+    virtual_machine_name="";
+    current_period=0;
+    suspended=false;
+    last_poll_point=0;
+    
+    //boinc_resolve_filename_s("cernvm.vmdk.gz",disk_path);
+//  fprintf(stderr,"%s\n",disk_path.c_str());
+//  relative_to_absolute(buffer,(char*)disk_path.c_str());
+    boinc_getcwd(buffer);
     disk_path = "cernvm.vmdk";
-	disk_path="/"+disk_path;
-	disk_path=buffer+disk_path;
-	disk_path="\""+disk_path+"\"";
-//	disk_path=buffer;
-//	fprintf(stderr, "%s\n",disk_path.c_str());
+    disk_path="/"+disk_path;
+    disk_path=buffer+disk_path;
+    disk_path="\""+disk_path+"\"";
+//  disk_path=buffer;
+//  fprintf(stderr, "%s\n",disk_path.c_str());
 
-	name_path="";
-	//boinc_get_init_data(aid);
-	//name_path += aid.project_dir;
-	//name_path += "/";
-	name_path += VM_NAME;
-}	
+    name_path="";
+    //boinc_get_init_data(aid);
+    //name_path += aid.project_dir;
+    //name_path += "/";
+    name_path += VM_NAME;
+}   
 
 void VM::create() {
-	time_t rawtime;
-	string arg_list;
-	char buffer[256];
-	FILE* fp;
+    time_t rawtime;
+    string arg_list;
+    char buffer[256];
+    FILE* fp;
 
-	rawtime=time(NULL);
-	strftime ( buffer, 256, "%Y%m%d%H%M%S", localtime (&rawtime) );
-	virtual_machine_name="";
-	virtual_machine_name += "BOINC_VM_";
-	virtual_machine_name += buffer;
+    rawtime=time(NULL);
+    strftime ( buffer, 256, "%Y%m%d%H%M%S", localtime (&rawtime) );
+    virtual_machine_name="";
+    virtual_machine_name += "BOINC_VM_";
+    virtual_machine_name += buffer;
 
 //createvm
-	arg_list="";
-	arg_list="createvm --name "+virtual_machine_name+ \
-			" --ostype Linux26 --register";
-	if(!vbm_popen(arg_list)){
-		fprintf(stderr,"Create createvm failed!\n");
-		boinc_finish(1);
-	}
+    arg_list="";
+    arg_list="createvm --name "+virtual_machine_name+ \
+            " --ostype Linux26 --register";
+    if(!vbm_popen(arg_list)){
+        fprintf(stderr,"Create createvm failed!\n");
+        boinc_finish(1);
+    }
 
 //modifyvm
-	arg_list="";
-	arg_list="modifyvm "+virtual_machine_name+ \
-			" --memory 256 --acpi on --ioapic on \
-			--boot1 disk --boot2 none --boot3 none --boot4 none \
-			--nic1 nat ";
+    arg_list="";
+    arg_list="modifyvm "+virtual_machine_name+ \
+            " --memory 256 --acpi on --ioapic on \
+            --boot1 disk --boot2 none --boot3 none --boot4 none \
+            --nic1 nat ";
 //CernVM BOINC version doesn't need hostonly network interface
 /*
 #ifdef _WIN32
-	arg_list+="--nic2 hostonly --hostonlyadapter2 \"VirtualBox Host-Only Ethernet Adapter\"";
+    arg_list+="--nic2 hostonly --hostonlyadapter2 \"VirtualBox Host-Only Ethernet Adapter\"";
 #else
-	arg_list+="--nic2 hostonly --hostonlyadapter2 \"vboxnet0\"";
+    arg_list+="--nic2 hostonly --hostonlyadapter2 \"vboxnet0\"";
 #endif
 */
-	vbm_popen(arg_list);
+    vbm_popen(arg_list);
 
 
 //storagectl
-	arg_list="";
-	arg_list="storagectl "+virtual_machine_name+ \
-			" --name \"IDE Controller\" --add ide --controller PIIX4";
-	vbm_popen(arg_list);
+    arg_list="";
+    arg_list="storagectl "+virtual_machine_name+ \
+            " --name \"IDE Controller\" --add ide --controller PIIX4";
+    vbm_popen(arg_list);
 
 //openmedium
-	arg_list="";
-	arg_list="openmedium disk "+disk_path;
-	vbm_popen(arg_list);
+    arg_list="";
+    arg_list="openmedium disk "+disk_path;
+    vbm_popen(arg_list);
 
 //storageattach
-	arg_list="";
-	arg_list="storageattach "+virtual_machine_name+ \
-			" --storagectl \"IDE Controller\" \
-			--port 0 --device 0 --type hdd --medium " \
-			+disk_path;
-	if(!vbm_popen(arg_list)){
-		fprintf(stderr,"Create storageattach failed!\n");
+    arg_list="";
+    arg_list="storageattach "+virtual_machine_name+ \
+            " --storagectl \"IDE Controller\" \
+            --port 0 --device 0 --type hdd --medium " \
+            +disk_path;
+    if(!vbm_popen(arg_list)){
+        fprintf(stderr,"Create storageattach failed!\n");
         //DEBUG for knowing which filename is being used
         //fprintf(stderr,disk_path.c_str());
         //fprintf(stderr,"\n");
-		boinc_finish(1);
-	}
+        boinc_finish(1);
+    }
 
     // Write down the name of the virtual machine in a file called VM_NAME
-	if((fp=fopen(name_path.c_str(),"w"))==NULL){
-		fprintf(stderr,"fopen failed!\n");
-		boinc_finish(1);
-	}
-	fputs(virtual_machine_name.c_str(),fp);
-	fclose(fp);
+    if((fp=fopen(name_path.c_str(),"w"))==NULL){
+        fprintf(stderr,"fopen failed!\n");
+        boinc_finish(1);
+    }
+    fputs(virtual_machine_name.c_str(),fp);
+    fclose(fp);
 
 }
 
 void VM::start(bool vrdp=false) {
     // Start the VM in headless mode
-	string arg_list="";
+    string arg_list="";
     arg_list=" startvm "+ virtual_machine_name + " --type headless";
-	vbm_popen(arg_list);
+    vbm_popen(arg_list);
     // Enable or disable VRDP for the VM: (by default is disabled)
     if (vrdp)
     {
@@ -346,153 +349,153 @@ void VM::start(bool vrdp=false) {
 }
 
 void VM::kill() {
-	string arg_list="";
-	arg_list="controlvm "+virtual_machine_name+" poweroff";
-	vbm_popen(arg_list);
+    string arg_list="";
+    arg_list="controlvm "+virtual_machine_name+" poweroff";
+    vbm_popen(arg_list);
 }
 
 void VM::stop() {
-	time_t current_time;
-	string arg_list="";
-	arg_list="controlvm "+virtual_machine_name+" pause";
-	if(vbm_popen(arg_list)) {
-		suspended = true;
-		current_time=time(NULL);
-		current_period += difftime (current_time,last_poll_point);
-	}
-		
+    time_t current_time;
+    string arg_list="";
+    arg_list="controlvm "+virtual_machine_name+" pause";
+    if(vbm_popen(arg_list)) {
+        suspended = true;
+        current_time=time(NULL);
+        current_period += difftime (current_time,last_poll_point);
+    }
+        
 }
 
 void VM::resume() {
-	string arg_list="";
-	arg_list="controlvm "+virtual_machine_name+" resume";
-	if(vbm_popen(arg_list)) {
-		suspended = false;
-		last_poll_point=time(NULL);
-	
-	}
+    string arg_list="";
+    arg_list="controlvm "+virtual_machine_name+" resume";
+    if(vbm_popen(arg_list)) {
+        suspended = false;
+        last_poll_point=time(NULL);
+    
+    }
 }
 
 void VM::check(){
-	string arg_list="";
-	if(suspended){
-		arg_list="controlvm "+virtual_machine_name+" resume";
-		vbm_popen(arg_list);
-	}
-	arg_list="controlvm "+virtual_machine_name+" savestate";
-	vbm_popen(arg_list);
+    string arg_list="";
+    if(suspended){
+        arg_list="controlvm "+virtual_machine_name+" resume";
+        vbm_popen(arg_list);
+    }
+    arg_list="controlvm "+virtual_machine_name+" savestate";
+    vbm_popen(arg_list);
 }
 
 void VM::remove(){
-	string arg_list="";
-	arg_list="storageattach "+virtual_machine_name+ \
-			" --storagectl \"IDE Controller\" \
-			--port 0 --device 0 --type hdd --medium  none";
-	vbm_popen(arg_list);
+    string arg_list="";
+    arg_list="storageattach "+virtual_machine_name+ \
+            " --storagectl \"IDE Controller\" \
+            --port 0 --device 0 --type hdd --medium  none";
+    vbm_popen(arg_list);
 
-	arg_list="";
-	arg_list="closemedium disk "+disk_path;
-	vbm_popen(arg_list);
+    arg_list="";
+    arg_list="closemedium disk "+disk_path;
+    vbm_popen(arg_list);
 
-	arg_list="";
-	arg_list="unregistervm "+virtual_machine_name+" --delete";
-	vbm_popen(arg_list);
+    arg_list="";
+    arg_list="unregistervm "+virtual_machine_name+" --delete";
+    vbm_popen(arg_list);
 
-	boinc_delete_file(name_path.c_str());
+    boinc_delete_file(name_path.c_str());
 }
-	
+    
 void VM::release(){
     string arg_list="";
-	arg_list="closemedium disk "+disk_path;
-	vbm_popen(arg_list);
+    arg_list="closemedium disk "+disk_path;
+    vbm_popen(arg_list);
 }
 
 int VM::send_cputime_message() {
-	char text[256];
-	int reval;
-	string variety=MESSAGE;
-	sprintf(text,"<run_time>%lf</run_time>",current_period);
-	reval=boinc_send_trickle_up((char *)variety.c_str(), text);
-	current_period=0;
-	write_cputime(0);
-	return reval;
+    char text[256];
+    int reval;
+    string variety=MESSAGE;
+    sprintf(text,"<run_time>%lf</run_time>",current_period);
+    reval=boinc_send_trickle_up((char *)variety.c_str(), text);
+    current_period=0;
+    write_cputime(0);
+    return reval;
 }
 
 void VM::poll() {
-	FILE* fp;
-	string arg_list, status;
-	char buffer[1024];
-	time_t current_time;
-	
-	arg_list="";
-	arg_list="showvminfo "+virtual_machine_name+" --machinereadable" ;
-	if (!vbm_popen(arg_list,buffer,sizeof(buffer))){
-		fprintf(stderr,"Get_status failed!\n");
-		boinc_finish(1);
-	}
+    FILE* fp;
+    string arg_list, status;
+    char buffer[1024];
+    time_t current_time;
+    
+    arg_list="";
+    arg_list="showvminfo "+virtual_machine_name+" --machinereadable" ;
+    if (!vbm_popen(arg_list,buffer,sizeof(buffer))){
+        fprintf(stderr,"Get_status failed!\n");
+        boinc_finish(1);
+    }
 
-	status=buffer;
-	if(status.find("VMState=\"running\"") !=string::npos){
-		if(suspended){
-			suspended=false;
-			last_poll_point=time(NULL);
-		}
-		else{
-			current_time=time(NULL);
-			current_period += difftime (current_time,last_poll_point);
-			last_poll_point=current_time;
-			fprintf(stderr,"poll running\n");
-		}
-		return;
-		fprintf(stderr,"running!\n");  //testing
-	}
-	if(status.find("VMState=\"paused\"") != string::npos){
-		time_t current_time;
-		if(!suspended){
-			suspended=true;
-	                current_time=time(NULL);
-	                current_period += difftime (current_time,last_poll_point);
-	        }
-		fprintf(stderr,"paused!\n");  //testing
-		return;
-	}
-	if(status.find("VMState=\"poweroff\"") != string::npos 
-		||status.find("VMState=\"saved\"") != string::npos){
-		fprintf(stderr,"poweroff or saved!\n"); //testing
-		exit(0);
-	}
-	fprintf(stderr,"Get cernvm status error!\n");
-	remove();
-	boinc_finish(1);
+    status=buffer;
+    if(status.find("VMState=\"running\"") !=string::npos){
+        if(suspended){
+            suspended=false;
+            last_poll_point=time(NULL);
+        }
+        else{
+            current_time=time(NULL);
+            current_period += difftime (current_time,last_poll_point);
+            last_poll_point=current_time;
+            fprintf(stderr,"poll running\n");
+        }
+        return;
+        fprintf(stderr,"running!\n");  //testing
+    }
+    if(status.find("VMState=\"paused\"") != string::npos){
+        time_t current_time;
+        if(!suspended){
+            suspended=true;
+                    current_time=time(NULL);
+                    current_period += difftime (current_time,last_poll_point);
+            }
+        fprintf(stderr,"paused!\n");  //testing
+        return;
+    }
+    if(status.find("VMState=\"poweroff\"") != string::npos 
+        ||status.find("VMState=\"saved\"") != string::npos){
+        fprintf(stderr,"poweroff or saved!\n"); //testing
+        exit(0);
+    }
+    fprintf(stderr,"Get cernvm status error!\n");
+    remove();
+    boinc_finish(1);
 }
 
 void poll_boinc_messages(VM& vm) {
     BOINC_STATUS status;
     boinc_get_status(&status);
     if (status.no_heartbeat) {
-	fprintf(stderr,"no_heartbeat");
-	vm.check();
+    fprintf(stderr,"no_heartbeat");
+    vm.check();
         exit(0);
     }
     if (status.quit_request) {
-     	fprintf(stderr,"quit_request");
+        fprintf(stderr,"quit_request");
         vm.check();
         exit(0);
     }
     if (status.abort_request) {
-	fprintf(stderr,"abort_request");   	
+    fprintf(stderr,"abort_request");    
         vm.kill();
         vm.send_cputime_message();
-		vm.remove();
+        vm.remove();
         boinc_finish(0);
     }
     if (status.suspended) {
-    	fprintf(stderr,"suspend");
+        fprintf(stderr,"suspend");
         if (!vm.suspended) {
             vm.stop();
         }
     } else {
-    	fprintf(stderr,"resume");
+        fprintf(stderr,"resume");
         if (vm.suspended) {
             vm.resume();
         }
@@ -500,6 +503,7 @@ void poll_boinc_messages(VM& vm) {
 }
 
 void write_cputime(double cpu) {
+    // TODO: modify this method to use real CPU usage from VirtualBox API.
     FILE* f = fopen(CPU_TIME, "w");
     if (!f) return;
     fprintf(f, "%lf\n", cpu);
@@ -518,36 +522,96 @@ void read_cputime(double& cpu) {
 }
 
 int main(int argc, char** argv) {
-	BOINC_OPTIONS options;
-	double cpu_time=0;
-	FILE*fp;
+    BOINC_OPTIONS options;
+    double cpu_time=0;
+    FILE*fp;
     char buffer[2048]; // Enough size for the VBoxManage list vms output
-	unsigned int i;
-	bool graphics = false;
+    unsigned int i;
+    bool graphics = false;
     bool vrdp = false;
     bool vm_name = false;
     bool retval = false;
     // Name for the VM vmdk filename
     string cernvm = "cernvm.vmdk";
     string resolved_name;
+    unsigned int output;
 
-	for (i=1; i<(unsigned int)argc; i++) {
-	if (!strcmp(argv[i], "--graphics")) {
-	    graphics = true;
-	}
-	}
 
-	memset(&options, 0, sizeof(options));
-	options.main_program = true;
-	options.check_heartbeat = true;
-	options.handle_process_control = true;
-	options.handle_trickle_ups = true;
-	if (graphics) {
-	options.backwards_compatible_graphics = true;
-	}
-	 boinc_init_options(&options);
 
-	VM vm;
+    for (i=1; i<(unsigned int)argc; i++) {
+    if (!strcmp(argv[i], "--graphics")) {
+        graphics = true;
+    }
+    }
+
+    memset(&options, 0, sizeof(options));
+    options.main_program = true;
+    options.check_heartbeat = true;
+    options.handle_process_control = true;
+    options.handle_trickle_ups = true;
+    if (graphics) {
+    options.backwards_compatible_graphics = true;
+    }
+     boinc_init_options(&options);
+
+    // Setting up the PATH for Windows machines:
+    #ifdef _WIN32
+        // DEBUG information:
+        fprintf(stderr,"Setting VirtualBox PATH in Windows...\n");
+        // New variables for setting the environment variable PATH
+        LPTSTR pszOldVal;
+        LPTSTR newVirtualBoxPath;
+        LPTSTR virtualbox;
+        DWORD dwRet, dwErr;
+        BOOL fExist, fSuccess;
+    
+        // Create the new PATH variable
+        newVirtualBoxPath = (LPTSTR) malloc(4096*sizeof(TCHAR));
+        if(NULL == newVirtualBoxPath)
+            {
+                printf("Out of memory\n");
+                return FALSE;
+            }
+        virtualbox = ";%ProgramFiles%\\Oracle\\VirtualBox";
+        ExpandEnvironmentStrings(virtualbox,newVirtualBoxPath,4096);
+        
+        // Retrieve old PATH variable
+        pszOldVal = (LPTSTR) malloc(4096*sizeof(TCHAR));
+            if(NULL == pszOldVal)
+            {
+                printf("Out of memory\n");
+                return FALSE;
+            }
+        
+            dwRet = GetEnvironmentVariable("PATH", pszOldVal, 4096);
+        if(0 == dwRet)
+            {
+                dwErr = GetLastError();
+                if( ERROR_ENVVAR_NOT_FOUND == dwErr )
+                {
+                    printf("Environment variable does not exist.\n");
+                    fExist=FALSE;
+                }
+            }
+        else
+        {
+            // DEBUG: print old PATH enviroment variable
+            fprintf(stderr,"Old PATH environment variable:\n");
+            fprintf(stderr,pszOldVal);
+            fprintf(stderr,"\n");
+            // Set new PATH environment variable
+            SetEnvironmentVariable("PATH",lstrcat(pszOldVal,newVirtualBoxPath));
+            dwRet = GetEnvironmentVariable("PATH", pszOldVal, 4096);
+            fprintf(stderr,"Adding VirtualBox to PATH:\n");
+            fprintf(stderr,pszOldVal);
+            fprintf(stderr,"\n");
+        }
+        // Free memory
+        free(pszOldVal);
+        free(newVirtualBoxPath);
+    #endif
+
+    VM vm;
     // We check if the VM has already been created and launched
     if (fp=fopen("VMName","r"))
     {
@@ -568,60 +632,60 @@ int main(int argc, char** argv) {
     if (vm_name)
     {
         fprintf(stderr,"VMName exists\n");
-		bool VMexist=false;
-		string arg_list;
-		if((fp=fopen(vm.name_path.c_str(),"r"))==NULL){
-			fprintf(stderr,"Main fopen failed\n");
-			boinc_finish(1);
-		}
-		if(fgets(buffer,256,fp)) vm.virtual_machine_name=buffer;
-		fclose(fp);
+        bool VMexist=false;
+        string arg_list;
+        if((fp=fopen(vm.name_path.c_str(),"r"))==NULL){
+            fprintf(stderr,"Main fopen failed\n");
+            boinc_finish(1);
+        }
+        if(fgets(buffer,256,fp)) vm.virtual_machine_name=buffer;
+        fclose(fp);
         
         // DEBUG for the name of the VM
         // fprintf(stderr,"Name of the VM:\n");
         // fprintf(stderr,vm.virtual_machine_name.c_str());
 
-		arg_list="";
-		arg_list=" list vms";
-		if (!vbm_popen(arg_list,buffer,sizeof(buffer))){
-			fprintf(stderr, "CernVMManager list failed!\n");
-			boinc_finish(1);
-		}
+        arg_list="";
+        arg_list=" list vms";
+        if (!vbm_popen(arg_list,buffer,sizeof(buffer))){
+            fprintf(stderr, "CernVMManager list failed!\n");
+            boinc_finish(1);
+        }
 
-		string VMlist=buffer;
+        string VMlist=buffer;
         // DEBUG for the list of running VMs
         // fprintf(stderr,"List of running VMs:\n");
         // fprintf(stderr,VMlist.c_str());
         // fprintf(stderr,"\n");
-		if(VMlist.find(vm.virtual_machine_name.c_str()) != string::npos){
-			VMexist=true;
-		}
+        if(VMlist.find(vm.virtual_machine_name.c_str()) != string::npos){
+            VMexist=true;
+        }
 
-		//Maybe voluteers delete CernVM using VB GUI
+        //Maybe voluteers delete CernVM using VB GUI
 
-		if(!VMexist){
-			vm.release();
-			vm.create();
-		}
+        if(!VMexist){
+            vm.release();
+            vm.create();
+        }
 
-	}
-	else{		
-		fprintf(stderr,"File don't exist!\n");
-		vm.create();
-	}
+    }
+    else{       
+        fprintf(stderr,"File don't exist!\n");
+        vm.create();
+    }
 
-	read_cputime(cpu_time);
-	vm.current_period=cpu_time;
-	vm.start(vrdp);
-	vm.last_poll_point = time(NULL);
-	while (1) {
-		poll_boinc_messages(vm);
-		vm.poll();
-		if(vm.current_period >= CHECK_PERIOD)
-			write_cputime(vm.current_period);
-		if(vm.current_period >= TRICK_PERIOD)
-		vm.send_cputime_message();
-		boinc_sleep(POLL_PERIOD);
+    read_cputime(cpu_time);
+    vm.current_period=cpu_time;
+    vm.start(vrdp);
+    vm.last_poll_point = time(NULL);
+    while (1) {
+        poll_boinc_messages(vm);
+        vm.poll();
+        if(vm.current_period >= CHECK_PERIOD)
+            write_cputime(vm.current_period);
+        if(vm.current_period >= TRICK_PERIOD)
+        vm.send_cputime_message();
+        boinc_sleep(POLL_PERIOD);
     }
 }
 
