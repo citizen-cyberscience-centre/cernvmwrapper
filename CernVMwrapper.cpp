@@ -80,7 +80,7 @@ struct VM {
    
     VM();
     void create();
-    void start(bool vrdp);
+    void start(bool vrdp, bool headless);
     void kill();
     void stop();
     void resume();
@@ -329,10 +329,11 @@ void VM::create() {
 
 }
 
-void VM::start(bool vrdp=false) {
+void VM::start(bool vrdp=false, bool headless=false) {
     // Start the VM in headless mode
     string arg_list="";
-    arg_list=" startvm "+ virtual_machine_name + " --type headless";
+    if (headless) arg_list=" startvm "+ virtual_machine_name + " --type headless";
+    else arg_list = " startvm "+ virtual_machine_name;
     vbm_popen(arg_list);
     // Enable or disable VRDP for the VM: (by default is disabled)
     if (vrdp)
@@ -346,6 +347,15 @@ void VM::start(bool vrdp=false) {
         arg_list = " controlvm " + virtual_machine_name + " vrdp off";
     }
     vbm_popen(arg_list);
+
+    // If not running in Headless mode, disable the user of Powering Off the VM
+    if (!headless)
+    {
+        arg_list = "";
+        // Don't allow the user to save, shutdown, power off or restore the VM
+        arg_list = " setextradata " + virtual_machine_name + " GUI/RestrictedCloseActions SaveState,Shutdown,PowerOff,Restore";
+        vbm_popen(arg_list);
+    }
 }
 
 void VM::kill() {
@@ -528,6 +538,7 @@ int main(int argc, char** argv) {
     char buffer[2048]; // Enough size for the VBoxManage list vms output
     unsigned int i;
     bool graphics = false;
+    bool headless = false;
     bool vrdp = false;
     bool vm_name = false;
     bool retval = false;
@@ -538,10 +549,11 @@ int main(int argc, char** argv) {
 
 
 
-    for (i=1; i<(unsigned int)argc; i++) {
-    if (!strcmp(argv[i], "--graphics")) {
-        graphics = true;
-    }
+    // Checking command line options
+    for (i=1; i<(unsigned int)argc; i++) 
+    {
+        if (!strcmp(argv[i], "--graphics")) graphics = true;
+        if (!strcmp(argv[i], "--headless")) headless = true;
     }
 
     memset(&options, 0, sizeof(options));
@@ -676,7 +688,7 @@ int main(int argc, char** argv) {
 
     read_cputime(cpu_time);
     vm.current_period=cpu_time;
-    vm.start(vrdp);
+    vm.start(vrdp,headless);
     vm.last_poll_point = time(NULL);
     while (1) {
         poll_boinc_messages(vm);
