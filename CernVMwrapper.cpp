@@ -348,7 +348,7 @@ void VM::start(bool vrdp=false, bool headless=false) {
     }
     vbm_popen(arg_list);
 
-    // If not running in Headless mode, disable the user of Powering Off the VM
+    // If not running in Headless mode, don't allow the user to save, shutdown, power off or restore the VM
     if (!headless)
     {
         arg_list = "";
