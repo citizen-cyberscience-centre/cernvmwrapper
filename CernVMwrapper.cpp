@@ -36,6 +36,8 @@
 #ifdef _WIN32
 #include <windows.h>
 #include <tchar.h>
+#include <shlwapi.h>
+#pragma comment(lib, "shlwapi.lib")
 #include <stdio.h>
 #include <conio.h>
 #include <string.h>
@@ -570,6 +572,21 @@ int main(int argc, char** argv) {
     #ifdef _WIN32
         // DEBUG information:
         fprintf(stderr,"Setting VirtualBox PATH in Windows...\n");
+
+		// First get the HKEY_LOCAL_MACHINE\SOFTWARE\Oracle\VirtualBox
+		TCHAR szPath[4096];
+		DWORD dwType;
+		DWORD cbSize = sizeof(szPath) - sizeof(TCHAR); // Leave room for nul terminator
+		if (SHGetValue(HKEY_LOCAL_MACHINE,TEXT("SOFTWARE\\Oracle\\VirtualBox"),TEXT("InstallDir"),&dwType,szPath,&cbSize) == ERROR_SUCCESS)
+		{
+			//szPath[cbSize / sizeof(TCHAR)] = TEXT(´\0´);
+			fprintf(stderr,"Installation PATH of VirtualBox is: %s.\n",szPath);
+		}
+		else
+		{
+			fprintf(stderr,"Error retrieving the HKEY_LOCAL_MACHINE\SOFTWARE\Oracle\VirtualBox\InstallDir value\n");
+		}
+
         // New variables for setting the environment variable PATH
         LPTSTR pszOldVal;
         LPTSTR newVirtualBoxPath;
@@ -584,9 +601,8 @@ int main(int argc, char** argv) {
                 printf("Out of memory\n");
                 return FALSE;
             }
-        virtualbox = ";%ProgramFiles%\\Oracle\\VirtualBox";
-        ExpandEnvironmentStrings(virtualbox,newVirtualBoxPath,4096);
-        
+        virtualbox = szPath;
+                
         // Retrieve old PATH variable
         pszOldVal = (LPTSTR) malloc(4096*sizeof(TCHAR));
             if(NULL == pszOldVal)
@@ -612,8 +628,10 @@ int main(int argc, char** argv) {
             fprintf(stderr,pszOldVal);
             fprintf(stderr,"\n");
             // Set new PATH environment variable
-            SetEnvironmentVariable("PATH",lstrcat(pszOldVal,newVirtualBoxPath));
-            dwRet = GetEnvironmentVariable("PATH", pszOldVal, 4096);
+			lstrcat(pszOldVal,";"); // Concat ; to old PATH
+			// Add VirtualBox path
+			SetEnvironmentVariable("PATH",lstrcat(pszOldVal,virtualbox));
+		    dwRet = GetEnvironmentVariable("PATH", pszOldVal, 4096);
             fprintf(stderr,"Adding VirtualBox to PATH:\n");
             fprintf(stderr,pszOldVal);
             fprintf(stderr,"\n");
