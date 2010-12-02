@@ -571,20 +571,47 @@ int main(int argc, char** argv) {
     // Setting up the PATH for Windows machines:
     #ifdef _WIN32
         // DEBUG information:
-        fprintf(stderr,"Setting VirtualBox PATH in Windows...\n");
+        fprintf(stderr,"\nSetting VirtualBox PATH in Windows...\n");
 
 		// First get the HKEY_LOCAL_MACHINE\SOFTWARE\Oracle\VirtualBox
+        fprintf(stderr,"Trying to grab installation path of VirtualBox from Windows Registry...\n");
 		TCHAR szPath[4096];
 		DWORD dwType;
 		DWORD cbSize = sizeof(szPath) - sizeof(TCHAR); // Leave room for nul terminator
 		if (SHGetValue(HKEY_LOCAL_MACHINE,TEXT("SOFTWARE\\Oracle\\VirtualBox"),TEXT("InstallDir"),&dwType,szPath,&cbSize) == ERROR_SUCCESS)
 		{
 			//szPath[cbSize / sizeof(TCHAR)] = TEXT(´\0´);
-			fprintf(stderr,"Installation PATH of VirtualBox is: %s.\n",szPath);
+			fprintf(stderr,"Success!!! Installation PATH of VirtualBox is: %s.\n",szPath);
 		}
 		else
 		{
-			fprintf(stderr,"Error retrieving the HKEY_LOCAL_MACHINE\SOFTWARE\Oracle\VirtualBox\InstallDir value\n");
+			fprintf(stderr,"ERROR: Retrieving the HKEY_LOCAL_MACHINE\\SOFTWARE\\Oracle\\VirtualBox\\InstallDir value was impossible\n\n");
+
+            fprintf(stderr,"Trying with VBOX_INSTALL_PATH environment variable...\n");
+            LPTSTR VBoxInsPath;
+            DWORD dwRet, dwErr;
+            BOOL fExist, fSuccess;
+            // Retrieve old PATH variable
+            VBoxInsPath = (LPTSTR) malloc(4096*sizeof(TCHAR));
+                if(NULL == VBoxInsPath)
+                {
+					fprintf(stderr,"ERROR: malloc for VBoxInsPAth variable. Reason: Out of memory\n");
+                    return FALSE;
+                }
+            
+                dwRet = GetEnvironmentVariable("VBOX_INSTALL_PATH", VBoxInsPath, 4096);
+            if(0 == dwRet)
+                {
+                    dwErr = GetLastError();
+                    if( ERROR_ENVVAR_NOT_FOUND == dwErr )
+                    {
+						fprintf(stderr,"ERROR: VBOX_INSTALL_PATH environment variable does not exist.\n");
+						fprintf(stderr,"ERROR: Impossible to set up the VirtualBox PATH. Aborting execution.\n\n");
+                        fExist=FALSE;
+                        boinc_finish(1);
+                    }
+                }
+
 		}
 
         // New variables for setting the environment variable PATH
@@ -593,12 +620,15 @@ int main(int argc, char** argv) {
         LPTSTR virtualbox;
         DWORD dwRet, dwErr;
         BOOL fExist, fSuccess;
+
+
+
     
         // Create the new PATH variable
         newVirtualBoxPath = (LPTSTR) malloc(4096*sizeof(TCHAR));
         if(NULL == newVirtualBoxPath)
             {
-                printf("Out of memory\n");
+				fprintf(stderr, "ERROR: malloc for newVirtualBoxPath variable. Reason: Out of memory\n");
                 return FALSE;
             }
         virtualbox = szPath;
@@ -607,7 +637,7 @@ int main(int argc, char** argv) {
         pszOldVal = (LPTSTR) malloc(4096*sizeof(TCHAR));
             if(NULL == pszOldVal)
             {
-                printf("Out of memory\n");
+				fprintf(stderr,"ERROR: malloc of pszOldVal variable. Reason: Out of memory\n");
                 return FALSE;
             }
         
@@ -617,8 +647,9 @@ int main(int argc, char** argv) {
                 dwErr = GetLastError();
                 if( ERROR_ENVVAR_NOT_FOUND == dwErr )
                 {
-                    printf("Environment variable does not exist.\n");
+                    fprintf(stderr,"ERROR: PATH environment variable does not exist.\n");
                     fExist=FALSE;
+                    exit(1);
                 }
             }
         else
@@ -632,7 +663,7 @@ int main(int argc, char** argv) {
 			// Add VirtualBox path
 			SetEnvironmentVariable("PATH",lstrcat(pszOldVal,virtualbox));
 		    dwRet = GetEnvironmentVariable("PATH", pszOldVal, 4096);
-            fprintf(stderr,"Adding VirtualBox to PATH:\n");
+            fprintf(stderr,"\nAdding VirtualBox to PATH:\n");
             fprintf(stderr,pszOldVal);
             fprintf(stderr,"\n");
         }
@@ -651,6 +682,7 @@ int main(int argc, char** argv) {
     else
     {
         // Decompress the VM.gz file
+		fprintf(stderr,"\nInitializing VM...\n");
         fprintf(stderr,"Decompressing the VM\n");
         retval = boinc_resolve_filename_s("cernvm.vmdk.gz",resolved_name);
         if (retval) fprintf(stderr,"can't resolve cernvm.vmdk.gz filename");
@@ -700,7 +732,8 @@ int main(int argc, char** argv) {
 
     }
     else{       
-        fprintf(stderr,"File don't exist!\n");
+		fprintf(stderr,"Warning: VM is not registered!\n");
+		fprintf(stderr,"Registering a new VM from unzipped image...\n");
         vm.create();
     }
 
