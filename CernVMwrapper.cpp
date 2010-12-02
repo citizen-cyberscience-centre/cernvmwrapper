@@ -219,7 +219,7 @@ bool vbm_popen(string arg_list,
 
     fp = popen(command.c_str(),"r");
     if (fp == NULL){
-        fprintf(stderr,"vbm_popen popen failed!\n");
+        fprintf(stderr,"ERROR: vbm_popen popen failed!\n");
         return false;
     }
     memset(buffer,0,nSize);
@@ -275,7 +275,8 @@ void VM::create() {
     arg_list="createvm --name "+virtual_machine_name+ \
             " --ostype Linux26 --register";
     if(!vbm_popen(arg_list)){
-        fprintf(stderr,"Create createvm failed!\n");
+        fprintf(stderr,"ERROR: Create VM method: createvm failed!\n");
+        fprintf(stderr,"Aborting\n");
         boinc_finish(1);
     }
 
@@ -314,7 +315,8 @@ void VM::create() {
             --port 0 --device 0 --type hdd --medium " \
             +disk_path;
     if(!vbm_popen(arg_list)){
-        fprintf(stderr,"Create storageattach failed!\n");
+        fprintf(stderr,"ERROR: Create storageattach failed!\n");
+        fprintf(stderr,"Aborting\n");
         //DEBUG for knowing which filename is being used
         //fprintf(stderr,disk_path.c_str());
         //fprintf(stderr,"\n");
@@ -323,7 +325,8 @@ void VM::create() {
 
     // Write down the name of the virtual machine in a file called VM_NAME
     if((fp=fopen(name_path.c_str(),"w"))==NULL){
-        fprintf(stderr,"fopen failed!\n");
+        fprintf(stderr,"ERROR: Saving VM name failed. Details: fopen failed!\n");
+        fprintf(stderr,"Aborting\n");
         boinc_finish(1);
     }
     fputs(virtual_machine_name.c_str(),fp);
@@ -442,7 +445,8 @@ void VM::poll() {
     arg_list="";
     arg_list="showvminfo "+virtual_machine_name+" --machinereadable" ;
     if (!vbm_popen(arg_list,buffer,sizeof(buffer))){
-        fprintf(stderr,"Get_status failed!\n");
+        fprintf(stderr,"ERROR: Get status from VM failed!\n");
+        fprintf(stderr,"Aborting\n");
         boinc_finish(1);
     }
 
@@ -456,10 +460,10 @@ void VM::poll() {
             current_time=time(NULL);
             current_period += difftime (current_time,last_poll_point);
             last_poll_point=current_time;
-            fprintf(stderr,"poll running\n");
+            fprintf(stderr,"INFO: VM poll is running\n");
         }
         return;
-        fprintf(stderr,"running!\n");  //testing
+        fprintf(stderr,"INFO: VM is running!\n");  //testing
     }
     if(status.find("VMState=\"paused\"") != string::npos){
         time_t current_time;
@@ -468,15 +472,16 @@ void VM::poll() {
                     current_time=time(NULL);
                     current_period += difftime (current_time,last_poll_point);
             }
-        fprintf(stderr,"paused!\n");  //testing
+        fprintf(stderr,"INFO: VM is paused!\n");  //testing
         return;
     }
     if(status.find("VMState=\"poweroff\"") != string::npos 
         ||status.find("VMState=\"saved\"") != string::npos){
-        fprintf(stderr,"poweroff or saved!\n"); //testing
+        fprintf(stderr,"INFO: VM is powered off or saved!\n"); //testing
         exit(0);
     }
-    fprintf(stderr,"Get cernvm status error!\n");
+    fprintf(stderr,"ERROR: Get cernvm status error!\n");
+    fprintf(stderr,"Aborting\n");
     remove();
     boinc_finish(1);
 }
@@ -485,29 +490,29 @@ void poll_boinc_messages(VM& vm) {
     BOINC_STATUS status;
     boinc_get_status(&status);
     if (status.no_heartbeat) {
-    fprintf(stderr,"no_heartbeat");
+    fprintf(stderr,"INFO: BOINC no_heartbeat\n");
     vm.check();
         exit(0);
     }
     if (status.quit_request) {
-        fprintf(stderr,"quit_request");
+        fprintf(stderr,"INFO: BOINC status quit_request = True\n");
         vm.check();
         exit(0);
     }
     if (status.abort_request) {
-    fprintf(stderr,"abort_request");    
+    fprintf(stderr,"INFO: BOINC status abort_request = True\n");    
         vm.kill();
         vm.send_cputime_message();
         vm.remove();
         boinc_finish(0);
     }
     if (status.suspended) {
-        fprintf(stderr,"suspend");
+        fprintf(stderr,"INFO: BOINC status suspend = True. Stopping VM\n");
         if (!vm.suspended) {
             vm.stop();
         }
     } else {
-        fprintf(stderr,"resume");
+        fprintf(stderr,"INFO: BOINC status suspend = False. Resuming VM\n");
         if (vm.suspended) {
             vm.resume();
         }
