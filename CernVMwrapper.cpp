@@ -270,6 +270,44 @@ void VM::create() {
     virtual_machine_name += "BOINC_VM_";
     virtual_machine_name += buffer;
 
+// Check if a cernvm.vmdk has been registered before and delete it if it exists
+// THIS SHOULD GO IN A SPECIFIC FUNCTION. THE IDEA IS TO CALL THIS FUNCTION EACH TIME A BOINC_FINISH(1) IS CALLED.
+//    arg_list="";
+//    arg_list="list hdds | grep cernvm.vmdk";
+//    vbm_popen(arg_list,buffer,sizeof(buffer));
+//    string check = buffer;
+//    if (check.find("cernvm.vmdk") != string::npos)
+//    {
+//        fprintf(stderr,"WARNING: An old cernvm.vmdk is in the system.\n");
+//        fprintf(stderr,"WARNING: %s\n",check.c_str());
+//        fprintf(stderr,"WARNING: Removing it...\n");
+//        char * oldisk;
+//        oldisk = strtok(buffer," ");
+//        oldisk = strtok(NULL ," ");
+//        fprintf(stderr,"%s\n",oldisk);
+//        check = oldisk;
+//        arg_list="";
+//        arg_list="closemedium disk --delete " + check ;
+//        if(!vbm_popen(arg_list))
+//        {
+//            fprintf(stderr,"ERROR: Another old cernvm.vmdk disk cannot be removed.\n");
+//            fprintf(stderr,"ERROR: Please, remove it by hand in VirtualBox\n");
+//            fprintf(stderr,"ERROR: Aborting.\n");
+//            boinc_finish(1);
+//        }
+//        else
+//        {
+//            fprintf(stderr,"INFO: Successfully removed old instance of cernvm.vmdk\n");
+//        
+//        }
+//
+//    }
+//    else
+//    {
+//        fprintf(stderr,"INFO: Starting to register the VM...\n");
+//    
+//    }
+
 //createvm
     arg_list="";
     arg_list="createvm --name "+virtual_machine_name+ \
@@ -302,6 +340,7 @@ void VM::create() {
     arg_list="storagectl "+virtual_machine_name+ \
             " --name \"IDE Controller\" --add ide --controller PIIX4";
     vbm_popen(arg_list);
+
 
 //openmedium
     arg_list="";
@@ -403,20 +442,59 @@ void VM::check(){
 
 void VM::remove(){
     string arg_list="";
-    arg_list="storageattach "+virtual_machine_name+ \
-            " --storagectl \"IDE Controller\" \
-            --port 0 --device 0 --type hdd --medium  none";
-    vbm_popen(arg_list);
 
-    arg_list="";
-    arg_list="closemedium disk "+disk_path;
-    vbm_popen(arg_list);
+    // First, we detach the disk from the VM
+    arg_list = "";
+    arg_list = "modifyvm " + virtual_machine_name + " --hda none";
+     if(!vbm_popen(arg_list))
+    {
+        fprintf(stderr,"ERROR: disk cannot detached from VM.\n");
+        fprintf(stderr,"ERROR: Please, remove it by hand in VirtualBox\n");
+        fprintf(stderr,"ERROR: Aborting.\n");
+        boinc_finish(1);
+    }
+    else
+    {
+        fprintf(stderr,"INFO: Successfully detached the CernVM disk\n");
+    
+    }
 
+    // Then, we remove the disk
+    arg_list = "";
+    arg_list = "closemedium disk --delete " + disk_path;
+    if(!vbm_popen(arg_list))
+    {
+        fprintf(stderr,"ERROR: cernvm.vmdk disk cannot be removed.\n");
+        fprintf(stderr,"ERROR: Please, remove it by hand in VirtualBox\n");
+        fprintf(stderr,"ERROR: Aborting.\n");
+        boinc_finish(1);
+    }
+    else
+    {
+        fprintf(stderr,"INFO: Successfully removed the CernVM disk\n");
+    
+    }
+
+    // Finally, we unregister the VM
     arg_list="";
     arg_list="unregistervm "+virtual_machine_name+" --delete";
-    vbm_popen(arg_list);
+    if(!vbm_popen(arg_list))
+    {
+        fprintf(stderr,"ERROR: CernVM cannot be unregistered.\n");
+        fprintf(stderr,"ERROR: Please, unregister it by hand in VirtualBox\n");
+        fprintf(stderr,"ERROR: Aborting.\n");
+        boinc_finish(1);
+    }
+    else
+    {
+        fprintf(stderr,"INFO: Successfully unregistered the CernVM\n");
+    
+    }
 
+    // Remove file VM_NAME to delete the name of the VM
     boinc_delete_file(name_path.c_str());
+
+
 }
     
 void VM::release(){
@@ -615,8 +693,16 @@ int main(int argc, char** argv) {
                         fExist=FALSE;
                         boinc_finish(1);
                     }
+                    else
+                    {
+                        fprintf(stderr,"ERROR: GetLastError ouput for VBOX_INSTALL_PATH environment variable: %u\n", dwErr);
+                        fprintf(stderr,"Aborting\n");
+                        fExist=FALSE;
+                        boinc_finish(1);
+                    
+                    }
                 }
-
+            free(VBoxInsPath);
 		}
 
         // New variables for setting the environment variable PATH
