@@ -63,10 +63,13 @@
 
 #define VM_NAME "VMName"
 #define CPU_TIME      "CpuTime"
+#define PROGRESS_FN "ProgressFile"
 #define TRICK_PERIOD 45.0*60
 #define CHECK_PERIOD 2.0*60
 #define POLL_PERIOD 1.0
 #define MESSAGE "CPUTIME"
+#define YEAR_SECS 365*24*60*60
+
 using std::vector;
 using std::string;
 
@@ -269,44 +272,6 @@ void VM::create() {
     virtual_machine_name="";
     virtual_machine_name += "BOINC_VM_";
     virtual_machine_name += buffer;
-
-// Check if a cernvm.vmdk has been registered before and delete it if it exists
-// THIS SHOULD GO IN A SPECIFIC FUNCTION. THE IDEA IS TO CALL THIS FUNCTION EACH TIME A BOINC_FINISH(1) IS CALLED.
-//    arg_list="";
-//    arg_list="list hdds | grep cernvm.vmdk";
-//    vbm_popen(arg_list,buffer,sizeof(buffer));
-//    string check = buffer;
-//    if (check.find("cernvm.vmdk") != string::npos)
-//    {
-//        fprintf(stderr,"WARNING: An old cernvm.vmdk is in the system.\n");
-//        fprintf(stderr,"WARNING: %s\n",check.c_str());
-//        fprintf(stderr,"WARNING: Removing it...\n");
-//        char * oldisk;
-//        oldisk = strtok(buffer," ");
-//        oldisk = strtok(NULL ," ");
-//        fprintf(stderr,"%s\n",oldisk);
-//        check = oldisk;
-//        arg_list="";
-//        arg_list="closemedium disk --delete " + check ;
-//        if(!vbm_popen(arg_list))
-//        {
-//            fprintf(stderr,"ERROR: Another old cernvm.vmdk disk cannot be removed.\n");
-//            fprintf(stderr,"ERROR: Please, remove it by hand in VirtualBox\n");
-//            fprintf(stderr,"ERROR: Aborting.\n");
-//            boinc_finish(1);
-//        }
-//        else
-//        {
-//            fprintf(stderr,"INFO: Successfully removed old instance of cernvm.vmdk\n");
-//        
-//        }
-//
-//    }
-//    else
-//    {
-//        fprintf(stderr,"INFO: Starting to register the VM...\n");
-//    
-//    }
 
 //createvm
     arg_list="";
@@ -606,15 +571,43 @@ void write_cputime(double cpu) {
 }
 
 void read_cputime(double& cpu) {
-    double c;
+    long int c;
     cpu = 0;
     FILE* f = fopen(CPU_TIME, "r");
     if (!f) return;
-    int n = fscanf(f, "%lf",&c);
+    int n = fscanf(f, "%ld",&c);
     fclose(f);
     if (n != 1) return;
     cpu = c;
 }
+
+void write_progress(time_t secs)
+{
+    FILE* f = fopen(PROGRESS_FN, "w");
+    fprintf(f,"%ld\n", secs);
+    fclose(f);
+}   
+
+time_t read_progress() {
+    time_t stored_secs;
+    FILE* f = fopen(PROGRESS_FN, "r");
+    if (!f) return(0);
+    int n = fscanf(f, "%ld",&stored_secs);
+    fclose(f);
+    if (n != 1) return(0);
+    else return(stored_secs);
+}
+
+time_t update_progress(time_t secs) {
+    time_t old_secs;
+
+    old_secs = read_progress();
+    write_progress(old_secs +  secs);
+    return(old_secs + secs);
+    
+}
+
+
 
 int main(int argc, char** argv) {
     BOINC_OPTIONS options;
@@ -631,6 +624,10 @@ int main(int argc, char** argv) {
     string cernvm = "cernvm.vmdk";
     string resolved_name;
     unsigned int output;
+
+    // Registering time for progress accounting
+    time_t init_secs = time (NULL); 
+    fprintf(stderr,"INFO: %ld seconds since January 1, 1970", init_secs);
 
 
 
@@ -828,6 +825,9 @@ int main(int argc, char** argv) {
         vm.create();
     }
 
+    time_t elapsed_secs = 0, dif_secs = 0;
+    double frac_done = 0;
+
     read_cputime(cpu_time);
     vm.current_period=cpu_time;
     vm.start(vrdp,headless);
@@ -839,6 +839,15 @@ int main(int argc, char** argv) {
             write_cputime(vm.current_period);
         if(vm.current_period >= TRICK_PERIOD)
         vm.send_cputime_message();
+        // Report progress to BOINC client
+        elapsed_secs = time(NULL);
+        dif_secs = update_progress(elapsed_secs - init_secs);
+        fprintf(stderr,"INFO: Running seconds %ld\n",dif_secs);
+        frac_done = dif_secs/31536000.0;
+        fprintf(stderr,"INFO: Fraction done %f\n",frac_done);
+        //boinc_fraction_done(frac_done);
+        boinc_report_app_status(vm.current_period,0,frac_done);
+        init_secs = elapsed_secs;
         boinc_sleep(POLL_PERIOD);
     }
 }
