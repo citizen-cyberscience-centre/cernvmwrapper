@@ -279,6 +279,7 @@ void VM::create() {
             " --ostype Linux26 --register";
     if(!vbm_popen(arg_list)){
         fprintf(stderr,"ERROR: Create VM method: createvm failed!\n");
+        fprintf(stderr,"ERROR: %s\n",arg_list.c_str());
         fprintf(stderr,"Aborting\n");
         boinc_finish(1);
     }
@@ -320,11 +321,14 @@ void VM::create() {
             +disk_path;
     if(!vbm_popen(arg_list)){
         fprintf(stderr,"ERROR: Create storageattach failed!\n");
+        fprintf(stderr,"ERROR: %s\n",arg_list.c_str());
         fprintf(stderr,"Aborting\n");
         //DEBUG for knowing which filename is being used
         //fprintf(stderr,disk_path.c_str());
         //fprintf(stderr,"\n");
+        remove();
         boinc_finish(1);
+        exit(0);
     }
 
     // Write down the name of the virtual machine in a file called VM_NAME
@@ -343,7 +347,14 @@ void VM::start(bool vrdp=false, bool headless=false) {
     string arg_list="";
     if (headless) arg_list=" startvm "+ virtual_machine_name + " --type headless";
     else arg_list = " startvm "+ virtual_machine_name;
-    vbm_popen(arg_list);
+    if (!vbm_popen(arg_list))
+    {
+        fprintf(stderr,"ERROR: Impossible to start the VM\n");
+        fprintf(stderr,"ERROR: %s\n",arg_list.c_str());
+        fprintf(stderr,"INFO: Removing VM...\n");
+        remove();
+        boinc_finish(1);
+    }
     // Enable or disable VRDP for the VM: (by default is disabled)
     if (vrdp)
     {
@@ -414,9 +425,9 @@ void VM::remove(){
      if(!vbm_popen(arg_list))
     {
         fprintf(stderr,"ERROR: disk cannot detached from VM.\n");
+        fprintf(stderr,"ERROR: %s\n",arg_list.c_str());
         fprintf(stderr,"ERROR: Please, remove it by hand in VirtualBox\n");
         fprintf(stderr,"ERROR: Aborting.\n");
-        boinc_finish(1);
     }
     else
     {
@@ -430,9 +441,9 @@ void VM::remove(){
     if(!vbm_popen(arg_list))
     {
         fprintf(stderr,"ERROR: cernvm.vmdk disk cannot be removed.\n");
+        fprintf(stderr,"ERROR: %s\n",arg_list.c_str());
         fprintf(stderr,"ERROR: Please, remove it by hand in VirtualBox\n");
         fprintf(stderr,"ERROR: Aborting.\n");
-        boinc_finish(1);
     }
     else
     {
@@ -446,9 +457,9 @@ void VM::remove(){
     if(!vbm_popen(arg_list))
     {
         fprintf(stderr,"ERROR: CernVM cannot be unregistered.\n");
+        fprintf(stderr,"ERROR: %s\n",arg_list.c_str());
         fprintf(stderr,"ERROR: Please, unregister it by hand in VirtualBox\n");
         fprintf(stderr,"ERROR: Aborting.\n");
-        boinc_finish(1);
     }
     else
     {
