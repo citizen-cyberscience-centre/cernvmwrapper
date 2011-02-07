@@ -267,11 +267,11 @@ void VM::create() {
     char buffer[256];
     FILE* fp;
 
-    rawtime=time(NULL);
-    strftime ( buffer, 256, "%Y%m%d%H%M%S", localtime (&rawtime) );
-    virtual_machine_name="";
-    virtual_machine_name += "BOINC_VM_";
-    virtual_machine_name += buffer;
+    //rawtime=time(NULL);
+    //strftime ( buffer, 256, "%Y%m%d%H%M%S", localtime (&rawtime) );
+    //virtual_machine_name="";
+    //virtual_machine_name += "BOINC_VM_";
+    //virtual_machine_name += buffer;
 
 //createvm
     arg_list="";
@@ -427,7 +427,6 @@ void VM::remove(){
         fprintf(stderr,"ERROR: disk cannot detached from VM.\n");
         fprintf(stderr,"ERROR: %s\n",arg_list.c_str());
         fprintf(stderr,"ERROR: Please, remove it by hand in VirtualBox\n");
-        fprintf(stderr,"ERROR: Aborting.\n");
     }
     else
     {
@@ -443,7 +442,6 @@ void VM::remove(){
         fprintf(stderr,"ERROR: cernvm.vmdk disk cannot be removed.\n");
         fprintf(stderr,"ERROR: %s\n",arg_list.c_str());
         fprintf(stderr,"ERROR: Please, remove it by hand in VirtualBox\n");
-        fprintf(stderr,"ERROR: Aborting.\n");
     }
     else
     {
@@ -459,7 +457,6 @@ void VM::remove(){
         fprintf(stderr,"ERROR: CernVM cannot be unregistered.\n");
         fprintf(stderr,"ERROR: %s\n",arg_list.c_str());
         fprintf(stderr,"ERROR: Please, unregister it by hand in VirtualBox\n");
-        fprintf(stderr,"ERROR: Aborting.\n");
     }
     else
     {
@@ -636,9 +633,12 @@ int main(int argc, char** argv) {
     string resolved_name;
     unsigned int output;
 
+    // The VM
+    VM vm;
+
     // Registering time for progress accounting
     time_t init_secs = time (NULL); 
-    fprintf(stderr,"INFO: %ld seconds since January 1, 1970", init_secs);
+    //fprintf(stderr,"INFO: %ld seconds since January 1, 1970\n", init_secs);
 
 
 
@@ -647,6 +647,19 @@ int main(int argc, char** argv) {
     {
         if (!strcmp(argv[i], "--graphics")) graphics = true;
         if (!strcmp(argv[i], "--headless")) headless = true;
+        if (!strcmp(argv[i], "--vmname"))
+        {
+            vm.virtual_machine_name = argv[i+1];
+            fprintf(stderr,"INFO: The name of the VM is: %s\n",vm.virtual_machine_name.c_str());
+        
+        }
+    }
+
+    // If the wrapper has not be called with the command line argument --vmname NAME, give a default name to the VM
+    if (vm.virtual_machine_name.empty())
+    {
+        vm.virtual_machine_name = "BOINC_VM";
+    
     }
 
     memset(&options, 0, sizeof(options));
@@ -771,7 +784,7 @@ int main(int argc, char** argv) {
         free(newVirtualBoxPath);
     #endif
 
-    VM vm;
+    //VM vm;
     // We check if the VM has already been created and launched
     if (fp=fopen("VMName","r"))
     {
@@ -780,7 +793,11 @@ int main(int argc, char** argv) {
     }
     else
     {
-        // Decompress the VM.gz file
+        // First remove old versions
+        fprintf(stderr,"INFO: Cleaning old VMs of the project...\n");
+        vm.remove();
+        fprintf(stderr,"INFO: Cleaning completed\n");
+        // Then, Decompress the new VM.gz file
 		fprintf(stderr,"\nInitializing VM...\n");
         fprintf(stderr,"Decompressing the VM\n");
         retval = boinc_resolve_filename_s("cernvm.vmdk.gz",resolved_name);
