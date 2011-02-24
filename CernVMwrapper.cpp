@@ -90,7 +90,7 @@ struct VM {
     void stop();
     void savestate();
     void resume();
-    void check();    
+    void Check();    
     void remove();
     void release(); //release the virtual disk
     int send_cputime_message();
@@ -407,7 +407,7 @@ void VM::resume() {
     }
 }
 
-void VM::check(){
+void VM::Check(){
     string arg_list="";
     if(suspended){
         arg_list="controlvm "+virtual_machine_name+" resume";
@@ -567,12 +567,12 @@ void poll_boinc_messages(VM& vm) {
     boinc_get_status(&status);
     if (status.no_heartbeat) {
     fprintf(stderr,"INFO: BOINC no_heartbeat\n");
-    vm.check();
+    vm.Check();
         exit(0);
     }
     if (status.quit_request) {
         fprintf(stderr,"INFO: BOINC status quit_request = True\n");
-        vm.check();
+        vm.Check();
         exit(0);
     }
     if (status.abort_request) {
