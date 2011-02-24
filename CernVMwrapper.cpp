@@ -904,13 +904,19 @@ int main(int argc, char** argv) {
         boinc_report_app_status(vm.current_period,0,frac_done);
         if (frac_done >= 1.0)
         {
-            fprintf(stderr,"INFO: Saving the state of the VM...\n");
+            fprintf(stderr,"INFO: Stopping the VM...\n");
             vm.kill();
             vm.remove();
             // Update the ProgressFile for starting from zero next WU
             write_progress(0);
             fprintf(stderr,"INFO: Done!! Cleanly exiting.\n");
             fprintf(stderr,"INFO: Work Unit completed.\n");
+            // Output file:
+            fprintf(stderr,"INFO: Creating output file...\n");
+            FILE* output = fopen("output", "w");
+            fprintf(output, "Work Unit completed!\n");
+            fclose(output);
+            fprintf(stderr,"INFO: Done!\n");
             boinc_finish(0);
         }
         else
