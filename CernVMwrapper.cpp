@@ -88,6 +88,7 @@ struct VM {
     void start(bool vrdp, bool headless);
     void kill();
     void stop();
+    void savestate();
     void resume();
     void check();    
     void remove();
@@ -414,6 +415,17 @@ void VM::check(){
     }
     arg_list="controlvm "+virtual_machine_name+" savestate";
     vbm_popen(arg_list);
+}
+
+void VM::savestate()
+{
+    string arg_list = "";
+    arg_list = "controlvm " + virtual_machine_name + " savestate";
+    if (!vbm_popen(arg_list))
+    {
+        fprintf(stderr,"ERROR: The VM could not be saved.\n");
+    }
+
 }
 
 void VM::remove(){
@@ -871,12 +883,27 @@ int main(int argc, char** argv) {
         elapsed_secs = time(NULL);
         dif_secs = update_progress(elapsed_secs - init_secs);
         fprintf(stderr,"INFO: Running seconds %ld\n",dif_secs);
-        frac_done = dif_secs/31536000.0;
+        //frac_done = dif_secs/31536000.0;
+        // For 14 days:
+        frac_done = floor((dif_secs/1209600.0)*100.0)/100.0;
+        
         fprintf(stderr,"INFO: Fraction done %f\n",frac_done);
-        //boinc_fraction_done(frac_done);
         boinc_report_app_status(vm.current_period,0,frac_done);
-        init_secs = elapsed_secs;
-        boinc_sleep(POLL_PERIOD);
+        if (frac_done >= 1.0)
+        {
+            fprintf(stderr,"INFO: Saving the state of the VM...\n");
+            vm.savestate();
+            // Update the ProgressFile for starting from zero next WU
+            write_progress(0);
+            fprintf(stderr,"INFO: Done!! Cleanly exiting.\n");
+            fprintf(stderr,"INFO: Work Unit completed.\n");
+            boinc_finish(0);
+        }
+        else
+        {
+            init_secs = elapsed_secs;
+            boinc_sleep(POLL_PERIOD);
+        }
     }
 }
 
