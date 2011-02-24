@@ -431,7 +431,20 @@ void VM::savestate()
 void VM::remove(){
     string arg_list="";
 
-    // First, we detach the disk from the VM
+    // First we discard any saved state of the VM
+    arg_list = "";
+    arg_list = "discardstate " + virtual_machine_name;
+    if (!vbm_popen(arg_list))
+    {
+        fprintf(stderr,"ERROR: the saved state of the VM could not be deleted.\n");
+    }
+    else
+    {
+        fprintf(stderr,"INFO: VM saved state discarded.\n");
+    
+    }
+
+    // Then, we detach the disk from the VM
     arg_list = "";
     arg_list = "modifyvm " + virtual_machine_name + " --hda none";
      if(!vbm_popen(arg_list))
@@ -892,7 +905,8 @@ int main(int argc, char** argv) {
         if (frac_done >= 1.0)
         {
             fprintf(stderr,"INFO: Saving the state of the VM...\n");
-            vm.savestate();
+            vm.kill();
+            vm.remove();
             // Update the ProgressFile for starting from zero next WU
             write_progress(0);
             fprintf(stderr,"INFO: Done!! Cleanly exiting.\n");
