@@ -290,7 +290,9 @@ void VM::create() {
     arg_list="modifyvm "+virtual_machine_name+ \
             " --memory 256 --acpi on --ioapic on \
             --boot1 disk --boot2 none --boot3 none --boot4 none \
-            --nic1 nat ";
+            --nic1 nat \
+            --natdnsproxy1 on";
+
 //CernVM BOINC version doesn't need hostonly network interface
 /*
 #ifdef _WIN32
@@ -879,6 +881,7 @@ int main(int argc, char** argv) {
     }
 
     time_t elapsed_secs = 0, dif_secs = 0;
+    long int t = 0;
     double frac_done = 0;
 
     read_cputime(cpu_time);
@@ -895,10 +898,12 @@ int main(int argc, char** argv) {
         // Report progress to BOINC client
         elapsed_secs = time(NULL);
         dif_secs = update_progress(elapsed_secs - init_secs);
+        // Convert it for Windows machines:
+        t = static_cast<int>(dif_secs);
         fprintf(stderr,"INFO: Running seconds %ld\n",dif_secs);
         //frac_done = dif_secs/31536000.0;
-        // For 14 days:
-        frac_done = floor((dif_secs/1209600.0)*100.0)/100.0;
+        // For 3 days:
+        frac_done = floor((t/259200.0)*100.0)/100.0;
         
         fprintf(stderr,"INFO: Fraction done %f\n",frac_done);
         boinc_report_app_status(vm.current_period,0,frac_done);
