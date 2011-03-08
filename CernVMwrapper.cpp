@@ -646,6 +646,7 @@ time_t update_progress(time_t secs) {
 
 int main(int argc, char** argv) {
     BOINC_OPTIONS options;
+    BOINC_STATUS status;
     double cpu_time=0;
     FILE*fp;
     char buffer[2048]; // Enough size for the VBoxManage list vms output
@@ -896,38 +897,46 @@ int main(int argc, char** argv) {
         if(vm.current_period >= TRICK_PERIOD)
         vm.send_cputime_message();
         // Report progress to BOINC client
-        elapsed_secs = time(NULL);
-        dif_secs = update_progress(elapsed_secs - init_secs);
-        // Convert it for Windows machines:
-        t = static_cast<int>(dif_secs);
-        fprintf(stderr,"INFO: Running seconds %ld\n",dif_secs);
-        //frac_done = dif_secs/31536000.0;
-        // For 3 days:
-        frac_done = floor((t/259200.0)*100.0)/100.0;
-        
-        fprintf(stderr,"INFO: Fraction done %f\n",frac_done);
-        boinc_report_app_status(vm.current_period,0,frac_done);
-        if (frac_done >= 1.0)
+        boinc_get_status(&status);
+        if (!status.suspended)
         {
-            fprintf(stderr,"INFO: Stopping the VM...\n");
-            vm.kill();
-            vm.remove();
-            // Update the ProgressFile for starting from zero next WU
-            write_progress(0);
-            fprintf(stderr,"INFO: Done!! Cleanly exiting.\n");
-            fprintf(stderr,"INFO: Work Unit completed.\n");
-            // Output file:
-            fprintf(stderr,"INFO: Creating output file...\n");
-            FILE* output = fopen("output", "w");
-            fprintf(output, "Work Unit completed!\n");
-            fclose(output);
-            fprintf(stderr,"INFO: Done!\n");
-            boinc_finish(0);
+            elapsed_secs = time(NULL);
+            dif_secs = update_progress(elapsed_secs - init_secs);
+            // Convert it for Windows machines:
+            t = static_cast<int>(dif_secs);
+            fprintf(stderr,"INFO: Running seconds %ld\n",dif_secs);
+            //frac_done = dif_secs/31536000.0;
+            // For 3 days:
+            frac_done = floor((t/259200.0)*100.0)/100.0;
+            
+            fprintf(stderr,"INFO: Fraction done %f\n",frac_done);
+            boinc_report_app_status(vm.current_period,0,frac_done);
+            if (frac_done >= 1.0)
+            {
+                fprintf(stderr,"INFO: Stopping the VM...\n");
+                vm.kill();
+                vm.remove();
+                // Update the ProgressFile for starting from zero next WU
+                write_progress(0);
+                fprintf(stderr,"INFO: Done!! Cleanly exiting.\n");
+                fprintf(stderr,"INFO: Work Unit completed.\n");
+                // Output file:
+                fprintf(stderr,"INFO: Creating output file...\n");
+                FILE* output = fopen("output", "w");
+                fprintf(output, "Work Unit completed!\n");
+                fclose(output);
+                fprintf(stderr,"INFO: Done!\n");
+                boinc_finish(0);
+            }
+            else
+            {
+                init_secs = elapsed_secs;
+                boinc_sleep(POLL_PERIOD);
+            }
         }
         else
         {
-            init_secs = elapsed_secs;
-            boinc_sleep(POLL_PERIOD);
+            init_secs = time(NULL);
         }
     }
 }
