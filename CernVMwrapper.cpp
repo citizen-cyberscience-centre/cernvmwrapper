@@ -432,6 +432,45 @@ void VM::savestate()
 
 void VM::remove(){
     string arg_list="";
+    char buffer[8096], path[256];
+    string output, virtualdisk;
+    size_t found, end;
+    
+    // Get current path for creating the old path that had the cernvm.vmdk file
+    boinc_getcwd(path);
+    virtualdisk = path;
+    found = virtualdisk.find("slots");
+    virtualdisk = virtualdisk.substr(0,found);
+
+    // List cernvm.vmdk disk in VirtualBox Media Manager, and delete it
+    arg_list = "";
+    arg_list = "list hdds";
+    if (!vbm_popen(arg_list,buffer,sizeof(buffer))){
+        fprintf(stderr,"ERROR: impossible to get the list of disks\n");
+    }
+    else{
+        fprintf(stderr,"INFO: Getting cernvm.vmdk location URI...\n");
+        output = buffer;
+        // Search slot folder for getting cernvm.vmdk location
+        found = output.find("slots");
+        if( found !=string::npos){
+            output = output.substr(found);
+            end = output.find("\n");
+            if ( end != string::npos)
+            {
+            // Recreate cernvm.vmdk location for deleting it
+            virtualdisk += output.substr(0,end);
+            fprintf(stderr,"INFO: Done!\n");
+            }
+
+        }
+        else
+        {
+            fprintf(stderr,"INFO: cernvm.vmdk not found\n");
+        
+        }
+    
+    }
 
     // First we discard any saved state of the VM
     arg_list = "";
@@ -461,9 +500,9 @@ void VM::remove(){
     
     }
 
-    // Then, we remove the disk
+    // Then, we try to remove the disk 
     arg_list = "";
-    arg_list = "closemedium disk --delete " + disk_path;
+    arg_list = "closemedium disk --delete " + virtualdisk;
     if(!vbm_popen(arg_list))
     {
         fprintf(stderr,"ERROR: cernvm.vmdk disk cannot be removed.\n");
