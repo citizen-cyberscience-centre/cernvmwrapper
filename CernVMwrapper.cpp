@@ -564,9 +564,7 @@ void VM::poll() {
     boinc_finish(1);
 }
 
-void poll_boinc_messages(VM& vm) {
-    BOINC_STATUS status;
-    boinc_get_status(&status);
+void poll_boinc_messages(VM& vm, BOINC_STATUS &status) {
     if (status.no_heartbeat) {
     fprintf(stderr,"INFO: BOINC no_heartbeat\n");
     vm.Check();
@@ -890,14 +888,14 @@ int main(int argc, char** argv) {
     vm.start(vrdp,headless);
     vm.last_poll_point = time(NULL);
     while (1) {
-        poll_boinc_messages(vm);
+        boinc_get_status(&status);
+        poll_boinc_messages(vm, status);
         vm.poll();
         if(vm.current_period >= CHECK_PERIOD)
             write_cputime(vm.current_period);
         if(vm.current_period >= TRICK_PERIOD)
         vm.send_cputime_message();
         // Report progress to BOINC client
-        boinc_get_status(&status);
         if (!status.suspended)
         {
             elapsed_secs = time(NULL);
