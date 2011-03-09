@@ -502,7 +502,7 @@ void VM::remove(){
 
     // Then, we try to remove the disk 
     arg_list = "";
-    arg_list = "closemedium disk --delete " + virtualdisk;
+    arg_list = "closemedium disk --delete \"" + virtualdisk + "\"";
     if(!vbm_popen(arg_list))
     {
         fprintf(stderr,"ERROR: cernvm.vmdk disk cannot be removed.\n");
