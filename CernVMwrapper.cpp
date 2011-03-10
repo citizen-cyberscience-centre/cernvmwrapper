@@ -845,14 +845,16 @@ int main(int argc, char** argv) {
     while (1) {
         boinc_get_status(&status);
         poll_boinc_messages(vm, status);
-        vm.poll();
-        if(vm.current_period >= CHECK_PERIOD)
-            write_cputime(vm.current_period);
-        if(vm.current_period >= TRICK_PERIOD)
-        vm.send_cputime_message();
+        
         // Report progress to BOINC client
         if (!status.suspended)
         {
+            vm.poll();
+            if(vm.current_period >= CHECK_PERIOD)
+                write_cputime(vm.current_period);
+            if(vm.current_period >= TRICK_PERIOD)
+            vm.send_cputime_message();
+
             elapsed_secs = time(NULL);
             dif_secs = update_progress(elapsed_secs - init_secs);
             // Convert it for Windows machines:
@@ -890,6 +892,7 @@ int main(int argc, char** argv) {
         else
         {
             init_secs = time(NULL);
+            boinc_sleep(POLL_PERIOD);
         }
     }
 }
