@@ -85,7 +85,7 @@ struct VM {
    
     VM();
     void create();
-    void start(bool vrdp, bool headless);
+    void start(bool vrde, bool headless);
     void kill();
     void stop();
     void savestate();
@@ -312,9 +312,9 @@ void VM::create() {
 
 
 //openmedium
-    arg_list="";
-    arg_list="openmedium disk "+disk_path;
-    vbm_popen(arg_list);
+//    arg_list="";
+//    arg_list="openmedium disk "+disk_path;
+//    vbm_popen(arg_list);
 
 //storageattach
     arg_list="";
@@ -345,7 +345,7 @@ void VM::create() {
 
 }
 
-void VM::start(bool vrdp=false, bool headless=false) {
+void VM::start(bool vrde=false, bool headless=false) {
     // Start the VM in headless mode
     string arg_list="";
     if (headless) arg_list=" startvm "+ virtual_machine_name + " --type headless";
@@ -359,15 +359,15 @@ void VM::start(bool vrdp=false, bool headless=false) {
         boinc_finish(1);
     }
     // Enable or disable VRDP for the VM: (by default is disabled)
-    if (vrdp)
+    if (vrde)
     {
         arg_list = "";
-        arg_list = " controlvm " + virtual_machine_name + " vrdp on";
+        arg_list = " controlvm " + virtual_machine_name + " vrde on";
     }
     else
     {
         arg_list = "";
-        arg_list = " controlvm " + virtual_machine_name + " vrdp off";
+        arg_list = " controlvm " + virtual_machine_name + " vrde off";
     }
     vbm_popen(arg_list);
 
@@ -432,97 +432,13 @@ void VM::savestate()
 
 void VM::remove(){
     string arg_list="";
-    char buffer[8096], path[256];
-    string output, virtualdisk;
-    size_t found, end;
-    
-    // Get current path for creating the old path that had the cernvm.vmdk file
-    boinc_getcwd(path);
-    virtualdisk = path;
-    found = virtualdisk.find("slots");
-    virtualdisk = virtualdisk.substr(0,found);
 
-    // List cernvm.vmdk disk in VirtualBox Media Manager, and delete it
-    arg_list = "";
-    arg_list = "list hdds";
-    if (!vbm_popen(arg_list,buffer,sizeof(buffer))){
-        fprintf(stderr,"ERROR: impossible to get the list of disks\n");
-    }
-    else{
-        fprintf(stderr,"INFO: Getting cernvm.vmdk location URI...\n");
-        output = buffer;
-        // Search slot folder for getting cernvm.vmdk location
-        found = output.find("slots");
-        if( found !=string::npos){
-            output = output.substr(found);
-            end = output.find("\n");
-            if ( end != string::npos)
-            {
-            // Recreate cernvm.vmdk location for deleting it
-            virtualdisk += output.substr(0,end);
-            fprintf(stderr,"INFO: Done!\n");
-            }
-
-        }
-        else
-        {
-            fprintf(stderr,"INFO: cernvm.vmdk not found\n");
-        
-        }
-    
-    }
-
-    // First we discard any saved state of the VM
-    arg_list = "";
-    arg_list = "discardstate " + virtual_machine_name;
-    if (!vbm_popen(arg_list))
-    {
-        fprintf(stderr,"ERROR: the saved state of the VM could not be deleted.\n");
-    }
-    else
-    {
-        fprintf(stderr,"INFO: VM saved state discarded.\n");
-    
-    }
-
-    // Then, we detach the disk from the VM
-    arg_list = "";
-    arg_list = "modifyvm " + virtual_machine_name + " --hda none";
-     if(!vbm_popen(arg_list))
-    {
-        fprintf(stderr,"ERROR: disk cannot detached from VM.\n");
-        fprintf(stderr,"ERROR: %s\n",arg_list.c_str());
-        fprintf(stderr,"ERROR: Please, remove it by hand in VirtualBox\n");
-    }
-    else
-    {
-        fprintf(stderr,"INFO: Successfully detached the CernVM disk\n");
-    
-    }
-
-    // Then, we try to remove the disk 
-    arg_list = "";
-    arg_list = "closemedium disk --delete \"" + virtualdisk + "\"";
-    if(!vbm_popen(arg_list))
-    {
-        fprintf(stderr,"ERROR: cernvm.vmdk disk cannot be removed.\n");
-        fprintf(stderr,"ERROR: %s\n",arg_list.c_str());
-        fprintf(stderr,"ERROR: Please, remove it by hand in VirtualBox\n");
-    }
-    else
-    {
-        fprintf(stderr,"INFO: Successfully removed the CernVM disk\n");
-    
-    }
-
-    // Finally, we unregister the VM
     arg_list="";
     arg_list="unregistervm "+virtual_machine_name+" --delete";
     if(!vbm_popen(arg_list))
     {
-        fprintf(stderr,"ERROR: CernVM cannot be unregistered.\n");
-        fprintf(stderr,"ERROR: %s\n",arg_list.c_str());
-        fprintf(stderr,"ERROR: Please, unregister it by hand in VirtualBox\n");
+        fprintf(stderr,"INFO: CernVM does not exist, so it is not necessary to unregister.\n");
+        fprintf(stderr,"INFO: Please, check that cernvm.vmdk virtual hard disk is not registered.\n");
     }
     else
     {
@@ -690,7 +606,7 @@ int main(int argc, char** argv) {
     unsigned int i;
     bool graphics = false;
     bool headless = false;
-    bool vrdp = false;
+    bool vrde = false;
     bool vm_name = false;
     bool retval = false;
     // Name for the VM vmdk filename
@@ -924,7 +840,7 @@ int main(int argc, char** argv) {
 
     read_cputime(cpu_time);
     vm.current_period=cpu_time;
-    vm.start(vrdp,headless);
+    vm.start(vrde,headless);
     vm.last_poll_point = time(NULL);
     while (1) {
         boinc_get_status(&status);
