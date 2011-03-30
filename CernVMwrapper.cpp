@@ -86,7 +86,6 @@ struct VM {
     VM();
     void create();
     void start(bool vrde, bool headless);
-    bool exists();
     void kill();
     void stop();
     void savestate();
@@ -382,29 +381,6 @@ void VM::start(bool vrde=false, bool headless=false) {
     }
 }
 
-bool VM::exists() {
-    char buffer[1024];
-    string arg_list="", vms="";
-    arg_list=" list vms";
-    if(!vbm_popen(arg_list,buffer,sizeof(buffer)))
-    {
-        fprintf(stderr,"ERROR: List VMs failed.\n");
-        fprintf(stderr,"Aborting\n");
-        boinc_finish(1);
-    }
-    else
-    {
-        vms = buffer;
-        if (vms.find(virtual_machine_name) != string::npos)
-            // If VM is already registered return true, else false
-            return true;
-        else
-            return false;
-    
-    }
-
-}
-
 void VM::kill() {
     string arg_list="";
     arg_list="controlvm "+virtual_machine_name+" poweroff";
@@ -556,9 +532,12 @@ void poll_boinc_messages(VM& vm, BOINC_STATUS &status) {
     }
     if (status.abort_request) {
     fprintf(stderr,"INFO: BOINC status abort_request = True\n");    
+        vm.Check();
+        fprintf(stderr,"INFO: saving state of the vm and removing it...\n");
         vm.kill();
         //vm.send_cputime_message();
         vm.remove();
+        fprintf(stderr,"INFO: VM removed and task aborted\n");
         boinc_finish(0);
     }
     if (status.suspended) {
@@ -789,12 +768,10 @@ int main(int argc, char** argv) {
         free(newVirtualBoxPath);
     #endif
 
-    //VM vm;
     // We check if the VM has already been created and launched
-    //if (fp=fopen("VMName","r"))
-    if (vm.exists())
+    if (fp=fopen("VMName","r"))
     {
-        //fclose(fp);
+        fclose(fp);
         vm_name = true;
     }
     else
