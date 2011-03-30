@@ -86,6 +86,7 @@ struct VM {
     VM();
     void create();
     void start(bool vrde, bool headless);
+    bool exists();
     void kill();
     void stop();
     void savestate();
@@ -381,6 +382,29 @@ void VM::start(bool vrde=false, bool headless=false) {
     }
 }
 
+bool VM::exists() {
+    char buffer[1024];
+    string arg_list="", vms="";
+    arg_list=" list vms";
+    if(!vbm_popen(arg_list,buffer,sizeof(buffer)))
+    {
+        fprintf(stderr,"ERROR: List VMs failed.\n");
+        fprintf(stderr,"Aborting\n");
+        boinc_finish(1);
+    }
+    else
+    {
+        vms = buffer;
+        if (vms.find(virtual_machine_name) != string::npos)
+            // If VM is already registered return true, else false
+            return true;
+        else
+            return false;
+    
+    }
+
+}
+
 void VM::kill() {
     string arg_list="";
     arg_list="controlvm "+virtual_machine_name+" poweroff";
@@ -533,7 +557,7 @@ void poll_boinc_messages(VM& vm, BOINC_STATUS &status) {
     if (status.abort_request) {
     fprintf(stderr,"INFO: BOINC status abort_request = True\n");    
         vm.kill();
-        vm.send_cputime_message();
+        //vm.send_cputime_message();
         vm.remove();
         boinc_finish(0);
     }
@@ -647,7 +671,7 @@ int main(int argc, char** argv) {
     options.main_program = true;
     options.check_heartbeat = true;
     options.handle_process_control = true;
-    options.handle_trickle_ups = true;
+    //options.handle_trickle_ups = true;
     if (graphics) {
     options.backwards_compatible_graphics = true;
     }
@@ -767,9 +791,10 @@ int main(int argc, char** argv) {
 
     //VM vm;
     // We check if the VM has already been created and launched
-    if (fp=fopen("VMName","r"))
+    //if (fp=fopen("VMName","r"))
+    if (vm.exists())
     {
-        fclose(fp);
+        //fclose(fp);
         vm_name = true;
     }
     else
@@ -793,12 +818,13 @@ int main(int argc, char** argv) {
         fprintf(stderr,"VMName exists\n");
         bool VMexist=false;
         string arg_list;
-        if((fp=fopen(vm.name_path.c_str(),"r"))==NULL){
-            fprintf(stderr,"Main fopen failed\n");
-            boinc_finish(1);
-        }
-        if(fgets(buffer,256,fp)) vm.virtual_machine_name=buffer;
-        fclose(fp);
+        //if((fp=fopen(vm.name_path.c_str(),"r"))==NULL){
+        //    fprintf(stderr,"Main fopen failed\n");
+        //    boinc_finish(1);
+        //}
+        //if(fgets(buffer,256,fp)) vm.virtual_machine_name=buffer;
+        //fclose(fp);
+        fprintf(stderr,"INFO: Virtual machine name %s\n",vm.virtual_machine_name.c_str());
         
         // DEBUG for the name of the VM
         // fprintf(stderr,"Name of the VM:\n");
@@ -849,20 +875,19 @@ int main(int argc, char** argv) {
         // Report progress to BOINC client
         if (!status.suspended)
         {
-            vm.poll();
-            if(vm.current_period >= CHECK_PERIOD)
-                write_cputime(vm.current_period);
-            if(vm.current_period >= TRICK_PERIOD)
-            vm.send_cputime_message();
+            //vm.poll();
+            //if(vm.current_period >= CHECK_PERIOD)
+            //    write_cputime(vm.current_period);
+            //if(vm.current_period >= TRICK_PERIOD)
+            //vm.send_cputime_message();
 
             elapsed_secs = time(NULL);
             dif_secs = update_progress(elapsed_secs - init_secs);
             // Convert it for Windows machines:
             t = static_cast<int>(dif_secs);
             fprintf(stderr,"INFO: Running seconds %ld\n",dif_secs);
-            //frac_done = dif_secs/31536000.0;
-            // For 3 days:
-            frac_done = floor((t/259200.0)*100.0)/100.0;
+            // For 12 hours:
+            frac_done = floor((t/43200.0)*100.0)/100.0;
             
             fprintf(stderr,"INFO: Fraction done %f\n",frac_done);
             boinc_report_app_status(vm.current_period,0,frac_done);
