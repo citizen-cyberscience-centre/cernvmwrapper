@@ -582,10 +582,17 @@ void VM::poll() {
         fprintf(stderr,"INFO: VM is paused!\n");  //testing
         return;
     }
-    if(status.find("VMState=\"poweroff\"") != string::npos 
-        ||status.find("VMState=\"saved\"") != string::npos){
-        fprintf(stderr,"INFO: VM is powered off or saved!\n"); //testing
-        exit(0);
+    //if(status.find("VMState=\"poweroff\"") != string::npos 
+    //    ||status.find("VMState=\"saved\"") != string::npos){
+    //    fprintf(stderr,"INFO: VM is powered off or saved!\n"); //testing
+    //    exit(0);
+    //}
+    if (status.find("VMState=\"poweroff\"") != string::npos)
+    {
+        fprintf(stderr, "INFO: VM is powered off and it shouldn't\n");
+        fprintf(stderr, "INFO: Cancelling WU...\n");
+        boinc_finish(1);
+        exit(1);
     }
     fprintf(stderr,"ERROR: Get cernvm status error!\n");
     fprintf(stderr,"Aborting\n");
@@ -928,7 +935,11 @@ int main(int argc, char** argv) {
         if (!status.suspended)
         {
             vm.poll();
-            if (vm.suspended) vm.resume();
+            if (vm.suspended) 
+            {
+                fprintf(stderr,"WARNING: VM should be running as the WU is not suspended.\n");
+                vm.resume();
+            }
             //if(vm.current_period >= CHECK_PERIOD)
             //    write_cputime(vm.current_period);
             //if(vm.current_period >= TRICK_PERIOD)
