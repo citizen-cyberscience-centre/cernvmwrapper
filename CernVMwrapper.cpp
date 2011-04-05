@@ -75,6 +75,7 @@ using std::string;
 
 struct VM {
     string virtual_machine_name;
+    string disk_name;
     string disk_path;
     string name_path;
 
@@ -87,7 +88,7 @@ struct VM {
     void create();
     void start(bool vrde, bool headless);
     void kill();
-    void stop();
+    void pause();
     void savestate();
     void resume();
     void Check();    
@@ -248,6 +249,7 @@ VM::VM(){
 //  fprintf(stderr,"%s\n",disk_path.c_str());
 //  relative_to_absolute(buffer,(char*)disk_path.c_str());
     boinc_getcwd(buffer);
+    disk_name = "cernvm.vmdk";
     disk_path = "cernvm.vmdk";
     disk_path="/"+disk_path;
     disk_path=buffer+disk_path;
@@ -387,7 +389,7 @@ void VM::kill() {
     vbm_popen(arg_list);
 }
 
-void VM::stop() {
+void VM::pause() {
     time_t current_time;
     string arg_list="";
     arg_list="controlvm "+virtual_machine_name+" pause";
@@ -431,10 +433,69 @@ void VM::savestate()
 }
 
 void VM::remove(){
-    string arg_list="";
+    string arg_list="",vminfo, vmfolder, vmdisk;
+    char buffer[4096];
+    size_t found_init, found_end;
+
+    // First we get where is installed the VM
+    arg_list = "";
+    arg_list = "showvminfo " + virtual_machine_name + " --machinereadable";
+    if(!vbm_popen(arg_list,buffer,sizeof(buffer)))
+    {
+        fprintf(stderr,"INFO: Impossible to get the VM info...\n");
+    }
+    else
+    {
+
+        vminfo = buffer;
+        found_init = vminfo.find("CfgFile=");
+        if (found_init != string::npos)
+        {
+            found_end = vminfo.find(virtual_machine_name + ".vbox");
+            if (found_end != string::npos)
+                fprintf(stderr,"INFO: .vbox found!\n");
+            vmfolder = vminfo.substr(found_init+9,found_end-(found_init+9));
+            fprintf(stderr,"INFO: %s VM folder: %s\n", virtual_machine_name.c_str(),vmfolder.c_str());
+        
+        }
+
+        vminfo = buffer;
+        found_init = vminfo.find("IDE Controller-0-0");
+        if (found_init != string::npos)
+        {
+            found_end = vminfo.find("cernvm.vmdk");
+            if (found_end != string::npos)
+                fprintf(stderr,"INFO: cernvm.vmdk found!\n");
+            vmdisk = vminfo.substr(found_init+21,found_end-(found_init+21));
+            vmdisk = vmdisk + disk_name;
+            fprintf(stderr,"INFO: %s VM disk : %s\n", virtual_machine_name.c_str(),vmdisk.c_str());
+        
+        }
+
+
+    
+    }
+
+    // Remove remaining BOINC_VM folder
+#ifdef _WIN32
+    vmfolder = "RMDIR \" " + vmfolder + "\" /s /q";
+    if (system(vmfolder.c_str() == 0))
+        fprintf(stderr,"INFO: VM folder deleted!\n");
+    else
+        fprintf(stderr,"ERROR: VM folder could not be deleted.\n");
+
+#else // GNU/Linux and Mac OS X 
+    vmfolder = "rm -rf \"" + vmfolder + "\"";
+    if ( system(vmfolder.c_str()) == 0 )
+        fprintf(stderr,"INFO: VM folder deleted!\n");
+    else
+        fprintf(stderr,"ERROR: VM folder could not be deleted.\n");
+#endif
 
     arg_list="";
-    arg_list="unregistervm "+virtual_machine_name+" --delete";
+    //arg_list="unregistervm "+virtual_machine_name+" --delete";
+
+    arg_list="unregistervm "+virtual_machine_name;
     if(!vbm_popen(arg_list))
     {
         fprintf(stderr,"INFO: CernVM does not exist, so it is not necessary to unregister.\n");
@@ -445,6 +506,19 @@ void VM::remove(){
         fprintf(stderr,"INFO: Successfully unregistered the CernVM\n");
     
     }
+
+    arg_list = "";
+    arg_list = "closemedium  disk \"" + vmdisk + "\"";
+    if(!vbm_popen(arg_list))
+    {
+        fprintf(stderr,"INFO: Please, check that cernvm.vmdk virtual hard disk is not registered.\n");
+    }
+    else
+    {
+        fprintf(stderr,"INFO: Successfully removed the CernVM disk\n");
+    
+    }
+
 
     // Remove file VM_NAME to delete the name of the VM
     boinc_delete_file(name_path.c_str());
@@ -522,19 +596,20 @@ void VM::poll() {
 void poll_boinc_messages(VM& vm, BOINC_STATUS &status) {
     if (status.no_heartbeat) {
     fprintf(stderr,"INFO: BOINC no_heartbeat\n");
-    vm.Check();
+    //vm.Check();
+    vm.savestate();
         exit(0);
     }
     if (status.quit_request) {
         fprintf(stderr,"INFO: BOINC status quit_request = True\n");
-        vm.Check();
+        //vm.Check();
+        vm.savestate();
         exit(0);
     }
     if (status.abort_request) {
     fprintf(stderr,"INFO: BOINC status abort_request = True\n");    
-        vm.Check();
         fprintf(stderr,"INFO: saving state of the vm and removing it...\n");
-        vm.kill();
+        vm.savestate();
         //vm.send_cputime_message();
         vm.remove();
         fprintf(stderr,"INFO: VM removed and task aborted\n");
@@ -543,7 +618,7 @@ void poll_boinc_messages(VM& vm, BOINC_STATUS &status) {
     if (status.suspended) {
         fprintf(stderr,"INFO: BOINC status suspend = True. Stopping VM\n");
         if (!vm.suspended) {
-            vm.stop();
+            vm.pause();
         }
     } else {
         fprintf(stderr,"INFO: BOINC status suspend = False. Resuming VM\n");
@@ -852,7 +927,8 @@ int main(int argc, char** argv) {
         // Report progress to BOINC client
         if (!status.suspended)
         {
-            //vm.poll();
+            vm.poll();
+            if (vm.suspended) vm.resume();
             //if(vm.current_period >= CHECK_PERIOD)
             //    write_cputime(vm.current_period);
             //if(vm.current_period >= TRICK_PERIOD)
@@ -871,7 +947,8 @@ int main(int argc, char** argv) {
             if (frac_done >= 1.0)
             {
                 fprintf(stderr,"INFO: Stopping the VM...\n");
-                vm.kill();
+                vm.savestate();
+                fprintf(stderr,"INFO: VM stopped!\n");
                 vm.remove();
                 // Update the ProgressFile for starting from zero next WU
                 write_progress(0);
