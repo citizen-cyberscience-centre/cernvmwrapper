@@ -479,7 +479,7 @@ void VM::remove(){
     // Remove remaining BOINC_VM folder
 #ifdef _WIN32
     vmfolder = "RMDIR \"" + vmfolder + "\" /s /q";
-    if (system(vmfolder.c_str() == 0))
+    if (system(vmfolder.c_str()) == 0)
         fprintf(stderr,"INFO: VM folder deleted!\n");
     else
         fprintf(stderr,"ERROR: VM folder could not be deleted.\n");
