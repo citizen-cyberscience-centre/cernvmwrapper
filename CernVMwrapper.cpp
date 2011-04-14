@@ -442,6 +442,19 @@ void VM::remove(){
     FILE * fp;
     bool vmRegistered = false;
 
+
+#ifdef _WIN32
+	env = getenv("HOMEDRIVE");
+	fprintf(stderr,"INFO: I´m running in a Windows system...\n");
+	vboxXML = string(env);
+	env = getenv("HOMEPATH");
+	vboxXML = vboxXML + string(env);
+	vboxfolder = vboxXML + "\\VirtualBox VMs\\";
+	vboxXML = vboxXML + "\\.VirtualBox\\VirtualBox.xml";
+	fprintf(stderr,"INFO: VirtualBox XML file: %s\n",vboxXML.c_str());
+
+
+#else 
     // New idea
     env = getenv("HOME");
     vboxXML = string(env);
@@ -460,6 +473,7 @@ void VM::remove(){
         vboxfolder = string(env) + "/Library/VirtualBox/";
         fprintf(stderr,"INFO: I'm running in a Mac OS X system...\n");
     }
+#endif
 
     std::ifstream in(vboxXML.c_str());
 
@@ -491,59 +505,32 @@ void VM::remove(){
         out.close();
     }
 
+
     // Delete old VirtualBox.xml and replace with new one
     std::remove(vboxXML.c_str());
     std::rename(vboxXMLNew.c_str(),vboxXML.c_str());
 
     
 
-
-//    // First we get where is installed the VM
-//    arg_list = "";
-//    arg_list = "showvminfo " + virtual_machine_name + " --machinereadable";
-//    if(!vbm_popen(arg_list,buffer,sizeof(buffer)))
-//    {
-//        fprintf(stderr,"INFO: Impossible to get the VM info...\n");
-//    }
-//    else
-//    {
-//
-//        vminfo = buffer;
-//        found_init = vminfo.find("CfgFile=");
-//        if (found_init != string::npos)
-//        {
-//            found_end = vminfo.find(virtual_machine_name + ".vbox");
-//            if (found_end != string::npos)
-//                fprintf(stderr,"INFO: .vbox found!\n");
-//            vmfolder = vminfo.substr(found_init+9,found_end-(found_init+9));
-//            fprintf(stderr,"INFO: %s VM folder: %s\n", virtual_machine_name.c_str(),vmfolder.c_str());
-//        
-//        }
-//
-//        vminfo = buffer;
-//        found_init = vminfo.find("IDE Controller-0-0");
-//        if (found_init != string::npos)
-//        {
-//            found_end = vminfo.find("cernvm.vmdk");
-//            if (found_end != string::npos)
-//                fprintf(stderr,"INFO: cernvm.vmdk found!\n");
-//            vmdisk = vminfo.substr(found_init+21,found_end-(found_init+21));
-//            vmdisk = vmdisk + disk_name;
-//            fprintf(stderr,"INFO: %s VM disk : %s\n", virtual_machine_name.c_str(),vmdisk.c_str());
-//        
-//        }
-//
-//
-//    
-//    }
-//
     // Remove remaining BOINC_VM folder
 #ifdef _WIN32
-    vmfolder = "RMDIR \"" + vmfolder + "\" /s /q";
-    if (system(vmfolder.c_str()) == 0)
-        fprintf(stderr,"INFO: VM folder deleted!\n");
+	if (vmRegistered)
+	{
+		vmfolder = "RMDIR \"" + vmfolder + "\" /s /q";
+		if (system(vmfolder.c_str()) == 0)
+			fprintf(stderr,"INFO: VM folder deleted!\n");
+		else
+			fprintf(stderr,"INFO: System was clean, nothing to delete.\n");
+	}
     else
-        fprintf(stderr,"ERROR: VM folder could not be deleted.\n");
+    {
+            fprintf(stderr,"INFO: VM was not registered, deleting old VM folders...\n");
+			vmfolder = "RMDIR \"" + vboxfolder + virtual_machine_name + "\" /s /q";
+            if ( system(vmfolder.c_str()) == 0 )
+                fprintf(stderr,"INFO: VM folder deleted!\n");
+            else
+                fprintf(stderr,"INFO: System was clean, nothing to delete.\n");
+    }
 
 #else // GNU/Linux and Mac OS X 
     // First delete the VM folder obtained in VirtualBox.xml
