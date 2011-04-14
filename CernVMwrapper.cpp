@@ -505,11 +505,21 @@ void VM::remove(){
         out.close();
     }
 
+    arg_list="unregistervm "+virtual_machine_name;
+    if(!vbm_popen(arg_list))
+    {
+        fprintf(stderr,"INFO: CernVM does not exist, so it is not necessary to unregister.\n");
+    }
+    else
+    {
+        fprintf(stderr,"INFO: Successfully unregistered the CernVM\n");
+    
+    }
+
 
     // Delete old VirtualBox.xml and replace with new one
     std::remove(vboxXML.c_str());
     std::rename(vboxXMLNew.c_str(),vboxXML.c_str());
-
     
 
     // Remove remaining BOINC_VM folder
