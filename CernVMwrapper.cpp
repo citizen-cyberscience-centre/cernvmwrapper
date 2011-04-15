@@ -505,6 +505,7 @@ void VM::remove(){
         out.close();
     }
 
+    // When the project is reset, we have to first unregister the VM, else we will have an error.
     arg_list="unregistervm "+virtual_machine_name;
     if(!vbm_popen(arg_list))
     {
@@ -1027,7 +1028,9 @@ int main(int argc, char** argv) {
             frac_done = floor((t/43200.0)*100.0)/100.0;
             
             fprintf(stderr,"INFO: Fraction done %f\n",frac_done);
-            boinc_report_app_status(vm.current_period,0,frac_done);
+            // Report total CPU time, which is dif_secs (task CPU running time), and checkpoint time (which is also dif_secs,
+            // as this variable is saved from start to re-start)
+            boinc_report_app_status(dif_secs,dif_secs,frac_done);
             if (frac_done >= 1.0)
             {
                 fprintf(stderr,"INFO: Stopping the VM...\n");
