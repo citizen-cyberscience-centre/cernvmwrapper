@@ -20,7 +20,6 @@
 //
 // Handles:
 // - suspend/resume/quit/abort virtual machine 
-// - reporting CPU time through trickle massages
 //
 // Contributor: Jie Wu <jiewu AT cern DOT ch>
 //
@@ -759,7 +758,7 @@ time_t update_progress(time_t secs) {
 int main(int argc, char** argv) {
     BOINC_OPTIONS options;
     BOINC_STATUS status;
-    double cpu_time=0;
+    double cpu_time=0, cpu_chkpt_time=0;
     FILE*fp;
     char buffer[2048]; // Enough size for the VBoxManage list vms output
     unsigned int i;
@@ -806,7 +805,7 @@ int main(int argc, char** argv) {
     options.main_program = true;
     options.check_heartbeat = true;
     options.handle_process_control = true;
-    //options.handle_trickle_ups = true;
+    
     if (graphics) {
     options.backwards_compatible_graphics = true;
     }
@@ -998,6 +997,7 @@ int main(int argc, char** argv) {
     double frac_done = 0;
 
     read_cputime(cpu_time);
+    cpu_chkpt_time = cpu_time;
     vm.current_period=cpu_time;
     vm.start(vrde,headless);
     vm.last_poll_point = time(NULL);
@@ -1024,8 +1024,8 @@ int main(int argc, char** argv) {
             // Convert it for Windows machines:
             t = static_cast<int>(dif_secs);
             fprintf(stderr,"INFO: Running seconds %ld\n",dif_secs);
-            // For 12 hours:
-            frac_done = floor((t/43200.0)*100.0)/100.0;
+            // For 24 hours:
+            frac_done = floor((t/86400.0)*100.0)/100.0;
             
             fprintf(stderr,"INFO: Fraction done %f\n",frac_done);
             // Report total CPU time, which is dif_secs (task CPU running time), and checkpoint time (which is also dif_secs,
