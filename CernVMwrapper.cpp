@@ -987,7 +987,7 @@ int main(int argc, char** argv) {
 
     time_t elapsed_secs = 0, dif_secs = 0;
     long int t = 0;
-    double frac_done = 0;
+    double frac_done = 0; 
 
     read_cputime(cpu_time);
     cpu_chkpt_time = cpu_time;
@@ -1023,7 +1023,7 @@ int main(int argc, char** argv) {
             fprintf(stderr,"INFO: Fraction done %f\n",frac_done);
             // Report total CPU time, which is dif_secs (task CPU running time), and checkpoint time (which is also dif_secs,
             // as this variable is saved from start to re-start)
-            boinc_report_app_status(dif_secs,dif_secs,frac_done);
+            boinc_report_app_status(static_cast<double>(dif_secs),static_cast<double>(dif_secs),frac_done);
             if (frac_done >= 1.0)
             {
                 fprintf(stderr,"INFO: Stopping the VM...\n");
