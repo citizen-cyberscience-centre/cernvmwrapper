@@ -373,19 +373,30 @@ void VM::throttle()
     // Check the BOINC CPU preferences for running the VM accordingly
     string arg_list = "";
     boinc_get_init_data(aid);
-    fprintf(stderr,"INFO: Maximum usage of CPU: %f\n", aid.global_prefs.cpu_usage_limit);
-    fprintf(stderr,"INFO: Setting how much CPU time the virtual CPU can use: %i\n", int(aid.global_prefs.cpu_usage_limit));
-    std::stringstream out;
-    out << int(aid.global_prefs.cpu_usage_limit);
+    double max_vm_cpu_pct = 100.0;
+    
+    if (aid.project_preferences)
+    {
+        if (!aid.project_preferences) return;
+        if (parse_double(aid.project_preferences, "<max_vm_cpu_pct>", max_vm_cpu_pct)) 
+        {
+            fprintf(stderr,"INFO: Maximum usage of CPU: %f\n", max_vm_cpu_pct);
+            fprintf(stderr,"INFO: Setting how much CPU time the virtual CPU can use: %i\n", int(max_vm_cpu_pct));
+            std::stringstream out;
+            out << int(max_vm_cpu_pct);
 
-    arg_list = " controlvm " + virtual_machine_name + " cpuexecutioncap " + out.str();
-    if (!vbm_popen(arg_list))
-    {
-        fprintf(stderr,"ERROR: Impossible to set up CPU percentage usage limit\n");
-    }
-    else
-    {
-        fprintf(stderr,"INFO: Success!\n");
+            arg_list = " controlvm " + virtual_machine_name + " cpuexecutioncap " + out.str();
+            if (!vbm_popen(arg_list))
+            {
+                fprintf(stderr,"ERROR: Impossible to set up CPU percentage usage limit\n");
+            }
+            else
+            {
+                fprintf(stderr,"INFO: Success!\n");
+            
+            }
+        
+        }
     
     }
 }
