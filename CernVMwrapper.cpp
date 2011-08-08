@@ -26,7 +26,6 @@
 // Contributor: Daniel Lombraña González <teleyinex AT gmail DOT com>
 
 #include <stdio.h>
-#include <vector>
 #include <string>
 #include <sstream>
 #include <iostream>
@@ -71,8 +70,8 @@
 #define POLL_PERIOD 1.0
 #define MESSAGE "CPUTIME"
 #define YEAR_SECS 365*24*60*60
+#define BUFSIZE 4096
 
-using std::vector;
 using std::string;
 
 struct VM {
@@ -100,7 +99,9 @@ struct VM {
     int send_cputime_message();
     void poll();
 };
+
 void write_cputime(double);
+
 APP_INIT_DATA aid;
 
 
@@ -193,18 +194,30 @@ bool vbm_popen(string arg_list,
         }
         return false;
     }
-    while(1)     
-    {
-        GetExitCodeProcess(pi.hProcess,&exit); //while the process is running
-        if (exit != STILL_ACTIVE)
-          break;
-    }
+    //while(1)     
+    //{
+    //    GetExitCodeProcess(pi.hProcess,&exit); //while the process is running
+    //    if (exit != STILL_ACTIVE)
+    //      break;
+    //}
+
+    // Wait until process exists.
+    WaitForSingleObject( pi.hProcess, INFINITE );
+
+    // Close process and thread handles.
     CloseHandle(pi.hThread);
     CloseHandle(pi.hProcess);
+
     if(buffer!=NULL){
         memset(buffer,0,nSize);
         DWORD bread;
-        ReadFile(read_stdout,buffer,nSize-1,&bread,NULL);
+        BOOL bSuccess = false;
+
+        for (;;)
+        {
+            ReadFile(read_stdout,buffer,nSize-1,&bread,NULL);
+            if ( ! bSuccess || bread == 0 ) break;
+        }
 //      buffer[bread]=0;
         CloseHandle(newstdout);
         CloseHandle(read_stdout);
