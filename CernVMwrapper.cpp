@@ -31,7 +31,7 @@
 #include <iostream>
 #include <fstream>
 #include <time.h>
-# include <stdlib.h>
+#include <stdlib.h>
 #include "zlib.h"
 
 #ifdef _WIN32
