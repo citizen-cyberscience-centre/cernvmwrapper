@@ -535,7 +535,7 @@ void VM::remove(){
 
 #ifdef _WIN32
 	env = getenv("HOMEDRIVE");
-	fprintf(stderr,"INFO: I´m running in a Windows system...\n");
+	fprintf(stderr,"INFO: I'm running in a Windows system...\n");
 	vboxXML = string(env);
 	env = getenv("HOMEPATH");
 	vboxXML = vboxXML + string(env);
@@ -545,7 +545,6 @@ void VM::remove(){
 
 
 #else 
-    // New idea
     env = getenv("HOME");
     vboxXML = string(env);
 
