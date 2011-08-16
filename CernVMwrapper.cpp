@@ -906,10 +906,10 @@ int main(int argc, char** argv) {
     options.handle_process_control = true;
     options.send_status_msgs = true;
     
-    if (graphics) {
-    options.backwards_compatible_graphics = true;
-    }
-     boinc_init_options(&options);
+    //if (graphics) {
+    //options.backwards_compatible_graphics = true;
+    //}
+    boinc_init_options(&options);
 
     // Setting up the PATH for Windows machines:
     #ifdef _WIN32
