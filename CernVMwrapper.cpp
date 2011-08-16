@@ -373,11 +373,11 @@ void VM::throttle()
     // Check the BOINC CPU preferences for running the VM accordingly
     string arg_list = "";
     boinc_get_init_data(aid);
-    double max_vm_cpu_pct = 100.0;
     
     if (aid.project_preferences)
     {
         if (!aid.project_preferences) return;
+        double max_vm_cpu_pct = 100.0;
         if (parse_double(aid.project_preferences, "<max_vm_cpu_pct>", max_vm_cpu_pct)) 
         {
             fprintf(stderr,"INFO: Maximum usage of CPU: %f\n", max_vm_cpu_pct);
@@ -455,12 +455,11 @@ void VM::kill() {
 
 void VM::pause() {
     boinc_begin_critical_section();
-    time_t current_time;
     string arg_list="";
     arg_list="controlvm "+virtual_machine_name+" pause";
     if(vbm_popen(arg_list)) {
         suspended = true;
-        current_time=time(NULL);
+        time_t current_time = time(NULL);
         current_period += difftime (current_time,last_poll_point);
     }
     boinc_end_critical_section();
@@ -506,10 +505,9 @@ void VM::savestate()
 
 void VM::remove(){
     boinc_begin_critical_section();
-    string arg_list="",vminfo, vboxfolder, vboxXML, vboxXMLNew, vmfolder, vmdisk, line;
+    string arg_list="",vminfo, vboxfolder, vboxXML, vboxXMLNew, vmfolder, vmdisk;
     char * env;
     char buffer[4096];
-    size_t found_init, found_end;
     FILE * fp;
     bool vmRegistered = false;
 
@@ -572,6 +570,8 @@ void VM::remove(){
         std::ofstream out(vboxXMLNew.c_str());
 
         int line_n = 0;
+        size_t found_init, found_end;
+        string line;
         while (std::getline(in,line))
         {
             found_init = line.find("BOINC_VM");
@@ -718,10 +718,9 @@ void VM::poll() {
         fprintf(stderr,"INFO: VM is running!\n");  //testing
     }
     if(status.find("VMState=\"paused\"") != string::npos){
-        time_t current_time;
         if(!suspended){
             suspended=true;
-                    current_time=time(NULL);
+                    time_t current_time=time(NULL);
                     current_period += difftime (current_time,last_poll_point);
             }
         fprintf(stderr,"INFO: VM is paused!\n");  //testing
@@ -933,8 +932,8 @@ int main(int argc, char** argv) {
 
             fprintf(stderr,"Trying with VBOX_INSTALL_PATH environment variable...\n");
             LPTSTR VBoxInsPath;
-            DWORD dwRet, dwErr;
-            BOOL fExist, fSuccess;
+            DWORD dwRet;
+            BOOL fSuccess;
             // Retrieve old PATH variable
             VBoxInsPath = (LPTSTR) malloc(4096*sizeof(TCHAR));
                 if(NULL == VBoxInsPath)
@@ -946,12 +945,12 @@ int main(int argc, char** argv) {
                 dwRet = GetEnvironmentVariable("VBOX_INSTALL_PATH", VBoxInsPath, 4096);
             if(0 == dwRet)
                 {
-                    dwErr = GetLastError();
+                    DWORD dwErr = GetLastError();
                     if( ERROR_ENVVAR_NOT_FOUND == dwErr )
                     {
 						fprintf(stderr,"ERROR: VBOX_INSTALL_PATH environment variable does not exist.\n");
 						fprintf(stderr,"ERROR: Impossible to set up the VirtualBox PATH. Aborting execution.\n\n");
-                        fExist=FALSE;
+                        BOOL fExist=FALSE;
                         boinc_finish(1);
                     }
                     else
@@ -970,8 +969,8 @@ int main(int argc, char** argv) {
         LPTSTR pszOldVal;
         LPTSTR newVirtualBoxPath;
         LPTSTR virtualbox;
-        DWORD dwRet, dwErr;
-        BOOL fExist, fSuccess;
+        DWORD dwRet;
+        BOOL fSuccess;
 
 
 
@@ -996,11 +995,11 @@ int main(int argc, char** argv) {
             dwRet = GetEnvironmentVariable("PATH", pszOldVal, 4096);
         if(0 == dwRet)
             {
-                dwErr = GetLastError();
+                DWORD dwErr = GetLastError();
                 if( ERROR_ENVVAR_NOT_FOUND == dwErr )
                 {
                     fprintf(stderr,"ERROR: PATH environment variable does not exist.\n");
-                    fExist=FALSE;
+                    BOOL fExist=FALSE;
                     exit(1);
                 }
             }
