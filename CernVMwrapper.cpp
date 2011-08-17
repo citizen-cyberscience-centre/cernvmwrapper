@@ -96,7 +96,6 @@ struct VM {
     void Check();    
     void remove();
     void release(); //release the virtual disk
-    int send_cputime_message();
     void poll();
 };
 
@@ -283,7 +282,6 @@ VM::VM(){
 void VM::create() {
     time_t rawtime;
     string arg_list;
-    char buffer[256];
     FILE* fp;
 
     //rawtime=time(NULL);
@@ -344,7 +342,7 @@ void VM::create() {
     arg_list="storageattach "+virtual_machine_name+ \
             " --storagectl \"IDE Controller\" \
             --port 0 --device 0 --type hdd --medium " \
-            +disk_path;
+            + disk_path;
     if(!vbm_popen(arg_list)){
         fprintf(stderr,"ERROR: Create storageattach failed!\n");
         fprintf(stderr,"ERROR: %s\n",arg_list.c_str());
@@ -507,8 +505,6 @@ void VM::remove(){
     boinc_begin_critical_section();
     string arg_list="",vminfo, vboxfolder, vboxXML, vboxXMLNew, vmfolder, vmdisk;
     char * env;
-    char buffer[4096];
-    FILE * fp;
     bool vmRegistered = false;
 
 
@@ -673,20 +669,8 @@ void VM::release(){
     boinc_end_critical_section();
 }
 
-int VM::send_cputime_message() {
-    char text[256];
-    int reval;
-    string variety=MESSAGE;
-    sprintf(text,"<run_time>%lf</run_time>",current_period);
-    reval=boinc_send_trickle_up((char *)variety.c_str(), text);
-    current_period=0;
-    write_cputime(0);
-    return reval;
-}
-
 void VM::poll() {
     boinc_begin_critical_section();
-    FILE* fp;
     string arg_list, status;
     char buffer[1024];
     time_t current_time;
@@ -697,6 +681,7 @@ void VM::poll() {
     if (!vbm_popen(arg_list,buffer,sizeof(buffer))){
         fprintf(stderr,"ERROR: Get status from VM failed!\n");
         fprintf(stderr,"INFO: poll() Aborting\n");
+        remove();
         boinc_end_critical_section();
         boinc_finish(1);
     }
@@ -717,6 +702,7 @@ void VM::poll() {
         return;
         fprintf(stderr,"INFO: VM is running!\n");  //testing
     }
+
     if(status.find("VMState=\"paused\"") != string::npos){
         if(!suspended){
             suspended=true;
@@ -727,11 +713,7 @@ void VM::poll() {
         boinc_end_critical_section();
         return;
     }
-    //if(status.find("VMState=\"poweroff\"") != string::npos 
-    //    ||status.find("VMState=\"saved\"") != string::npos){
-    //    fprintf(stderr,"INFO: VM is powered off or saved!\n"); //testing
-    //    exit(0);
-    //}
+
     if (status.find("VMState=\"poweroff\"") != string::npos)
     {
         fprintf(stderr, "INFO: VM is powered off and it shouldn't\n");
@@ -740,11 +722,7 @@ void VM::poll() {
         boinc_finish(1);
         exit(1);
     }
-    fprintf(stderr,"ERROR: Get cernvm status error!\n");
-    fprintf(stderr,"INFO: cernvm status error Aborting\n");
-    remove();
-    boinc_end_critical_section();
-    boinc_finish(1);
+
 }
 
 void poll_boinc_messages(VM& vm, BOINC_STATUS &status) {
@@ -771,7 +749,6 @@ void poll_boinc_messages(VM& vm, BOINC_STATUS &status) {
     fprintf(stderr,"INFO: BOINC status abort_request = True\n");    
         fprintf(stderr,"INFO: saving state of the vm and removing it...\n");
         vm.savestate();
-        //vm.send_cputime_message();
         vm.remove();
         fprintf(stderr,"INFO: VM removed and task aborted\n");
         boinc_finish(0);
@@ -789,52 +766,28 @@ void poll_boinc_messages(VM& vm, BOINC_STATUS &status) {
     }
 }
 
-void write_cputime(double cpu) {
-    // TODO: modify this method to use real CPU usage from VirtualBox API.
-    FILE* f = fopen(CPU_TIME, "w");
-    if (!f) return;
-    fprintf(f, "%lf\n", cpu);
-    fclose(f);
-}
-
-void read_cputime(double& cpu) {
-    long int c;
-    cpu = 0;
-    FILE* f = fopen(CPU_TIME, "r");
-    if (!f) return;
-    int n = fscanf(f, "%ld",&c);
-    fclose(f);
-    if (n != 1) return;
-    cpu = c;
-}
-
 void write_progress(time_t secs)
 {
-    FILE* f = fopen(PROGRESS_FN, "w");
-    fprintf(f,"%ld\n", secs);
-    //Flushing progress file after 5 minutes for not losing work
-    if ((int)boinc_elapsed_time() % (5*60) == 0)
+    std::ofstream f(PROGRESS_FN);
+    if (f.is_open())
     {
-#ifdef _WIN32
-        fprintf(stderr,"INFO: Flushing buffers after 5 minutes!\n");
-        fflush(f);
-        _commit(_fileno(f));
-#else
-        fprintf(stderr,"INFO: Flushing buffers after 5 minutes!\n");
-        fsync(fileno(f));
-#endif
+        f <<  secs;
     }
-    fclose(f);
+    f.close();
 }   
 
 time_t read_progress() {
-    time_t stored_secs;
-    FILE* f = fopen(PROGRESS_FN, "r");
-    if (!f) return(0);
-    int n = fscanf(f, "%ld",&stored_secs);
-    fclose(f);
-    if (n != 1) return(0);
-    else return(stored_secs);
+    std::ifstream f(PROGRESS_FN);
+    if (f.is_open())
+    {
+        if (f.good()) 
+        {
+            time_t stored_secs;
+            f >> stored_secs;
+            return stored_secs;
+        }
+        else return 0;
+    }
 }
 
 time_t update_progress(time_t secs) {
@@ -851,11 +804,10 @@ time_t update_progress(time_t secs) {
 int main(int argc, char** argv) {
     BOINC_OPTIONS options;
     BOINC_STATUS status;
-    double cpu_time=0, cpu_chkpt_time=0;
     FILE*fp;
     char buffer[2048]; // Enough size for the VBoxManage list vms output
     unsigned int i;
-    bool graphics = false;
+    //bool graphics = false;
     bool headless = false;
     bool vrde = false;
     bool vm_name = false;
@@ -863,7 +815,6 @@ int main(int argc, char** argv) {
     // Name for the VM vmdk filename
     string cernvm = "cernvm.vmdk";
     string resolved_name;
-    unsigned int output;
 
 
     // Get BOINC APP INIT DATA
@@ -883,7 +834,7 @@ int main(int argc, char** argv) {
     // Checking command line options
     for (i=1; i<(unsigned int)argc; i++) 
     {
-        if (!strcmp(argv[i], "--graphics")) graphics = true;
+        //if (!strcmp(argv[i], "--graphics")) bool graphics = true;
         if (!strcmp(argv[i], "--headless")) headless = true;
         if (!strcmp(argv[i], "--vmname"))
         {
@@ -1110,9 +1061,9 @@ int main(int argc, char** argv) {
     long int t = 0;
     double frac_done = 0; 
 
-    read_cputime(cpu_time);
-    cpu_chkpt_time = cpu_time;
-    vm.current_period=cpu_time;
+    //read_cputime(cpu_time);
+    //cpu_chkpt_time = cpu_time;
+    //vm.current_period=cpu_time;
     vm.start(vrde,headless);
     vm.last_poll_point = time(NULL);
     
@@ -1131,10 +1082,6 @@ int main(int argc, char** argv) {
                 fprintf(stderr,"WARNING: VM should be running as the WU is not suspended.\n");
                 vm.resume();
             }
-            //if(vm.current_period >= CHECK_PERIOD)
-            //    write_cputime(vm.current_period);
-            //if(vm.current_period >= TRICK_PERIOD)
-            //vm.send_cputime_message();
 
             elapsed_secs = time(NULL);
             dif_secs = update_progress(elapsed_secs - init_secs);
