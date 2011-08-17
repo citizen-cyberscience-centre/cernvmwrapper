@@ -282,18 +282,9 @@ VM::VM(){
 void VM::create() {
     time_t rawtime;
     string arg_list;
-    FILE* fp;
 
-    //rawtime=time(NULL);
-    //strftime ( buffer, 256, "%Y%m%d%H%M%S", localtime (&rawtime) );
-    //virtual_machine_name="";
-    //virtual_machine_name += "BOINC_VM_";
-    //virtual_machine_name += buffer;
-    //
-    //First release old virtual disks
-    //release();
 
-//createvm
+    //createvm
     arg_list="";
     arg_list="createvm --name "+virtual_machine_name+ \
             " --ostype Linux26 --register";
@@ -306,7 +297,7 @@ void VM::create() {
         boinc_finish(1);
     }
 
-//modifyvm
+    //modifyvm
     arg_list="";
     arg_list="modifyvm "+virtual_machine_name+ \
             " --memory 256 --acpi on --ioapic on \
@@ -314,30 +305,30 @@ void VM::create() {
             --nic1 nat \
             --natdnsproxy1 on";
 
-//CernVM BOINC version doesn't need hostonly network interface
-/*
-#ifdef _WIN32
-    arg_list+="--nic2 hostonly --hostonlyadapter2 \"VirtualBox Host-Only Ethernet Adapter\"";
-#else
-    arg_list+="--nic2 hostonly --hostonlyadapter2 \"vboxnet0\"";
-#endif
-*/
+    //CernVM BOINC version doesn't need hostonly network interface
+    /*
+    #ifdef _WIN32
+        arg_list+="--nic2 hostonly --hostonlyadapter2 \"VirtualBox Host-Only Ethernet Adapter\"";
+    #else
+        arg_list+="--nic2 hostonly --hostonlyadapter2 \"vboxnet0\"";
+    #endif
+    */
     vbm_popen(arg_list);
 
 
-//storagectl
+    //storagectl
     arg_list="";
     arg_list="storagectl "+virtual_machine_name+ \
             " --name \"IDE Controller\" --add ide --controller PIIX4";
     vbm_popen(arg_list);
 
 
-//openmedium
-//    arg_list="";
-//    arg_list="openmedium disk "+disk_path;
-//    vbm_popen(arg_list);
-
-//storageattach
+    //openmedium
+    //    arg_list="";
+    //    arg_list="openmedium disk "+disk_path;
+    //    vbm_popen(arg_list);
+    
+    //storageattach
     arg_list="";
     arg_list="storageattach "+virtual_machine_name+ \
             " --storagectl \"IDE Controller\" \
@@ -355,14 +346,23 @@ void VM::create() {
         exit(0);
     }
 
-    // Write down the name of the virtual machine in a file called VM_NAME
-    if((fp=fopen(name_path.c_str(),"w"))==NULL){
-        fprintf(stderr,"ERROR: Saving VM name failed. Details: fopen failed!\n");
+    std::ofstream f(name_path.c_str());
+    if (f.is_open())
+    {
+        if (f.good())
+        {
+            f << virtual_machine_name;
+        }
+
+        f.close();
+
+    }
+    else
+    {
+        fprintf(stderr,"ERROR: Saving VM name failed. Details: ofstream failed!\n");
         fprintf(stderr,"INFO: VM_NAME Aborting\n");
         boinc_finish(1);
     }
-    fputs(virtual_machine_name.c_str(),fp);
-    fclose(fp);
 
 }
 
@@ -804,7 +804,6 @@ time_t update_progress(time_t secs) {
 int main(int argc, char** argv) {
     BOINC_OPTIONS options;
     BOINC_STATUS status;
-    FILE*fp;
     char buffer[2048]; // Enough size for the VBoxManage list vms output
     unsigned int i;
     //bool graphics = false;
@@ -857,9 +856,6 @@ int main(int argc, char** argv) {
     options.handle_process_control = true;
     options.send_status_msgs = true;
     
-    //if (graphics) {
-    //options.backwards_compatible_graphics = true;
-    //}
     boinc_init_options(&options);
 
     // Setting up the PATH for Windows machines:
@@ -924,8 +920,6 @@ int main(int argc, char** argv) {
         BOOL fSuccess;
 
 
-
-    
         // Create the new PATH variable
         newVirtualBoxPath = (LPTSTR) malloc(4096*sizeof(TCHAR));
         if(NULL == newVirtualBoxPath)
@@ -975,10 +969,12 @@ int main(int argc, char** argv) {
     #endif
 
     // We check if the VM has already been created and launched
-    if (fp=fopen("VMName","r"))
+    std::ifstream f("VMName");
+    if (f.is_open())
     {
-        fclose(fp);
+        f.close();
         vm_name = true;
+    
     }
     else
     {
@@ -1002,17 +998,7 @@ int main(int argc, char** argv) {
 
         bool VMexist=false;
         string arg_list;
-        //if((fp=fopen(vm.name_path.c_str(),"r"))==NULL){
-        //    fprintf(stderr,"Main fopen failed\n");
-        //    boinc_finish(1);
-        //}
-        //if(fgets(buffer,256,fp)) vm.virtual_machine_name=buffer;
-        //fclose(fp);
         fprintf(stderr,"INFO: Virtual machine name %s\n",vm.virtual_machine_name.c_str());
-        
-        // DEBUG for the name of the VM
-        // fprintf(stderr,"Name of the VM:\n");
-        // fprintf(stderr,vm.virtual_machine_name.c_str());
 
         arg_list="";
         arg_list=" list vms";
@@ -1061,14 +1047,9 @@ int main(int argc, char** argv) {
     long int t = 0;
     double frac_done = 0; 
 
-    //read_cputime(cpu_time);
-    //cpu_chkpt_time = cpu_time;
-    //vm.current_period=cpu_time;
     vm.start(vrde,headless);
     vm.last_poll_point = time(NULL);
     
-
-
     while (1) {
         boinc_get_status(&status);
         poll_boinc_messages(vm, status);
@@ -1108,9 +1089,16 @@ int main(int argc, char** argv) {
                 fprintf(stderr,"INFO: Work Unit completed.\n");
                 // Output file:
                 fprintf(stderr,"INFO: Creating output file...\n");
-                FILE* output = fopen("output", "w");
-                fprintf(output, "Work Unit completed!\n");
-                fclose(output);
+                std::ofstream f("output");
+                if (f.is_open())
+                {
+                    if (f.good())
+                    {
+                        f << "Work Unit completed!\n";
+                        f.close();
+                    }
+                
+                }
                 fprintf(stderr,"INFO: Done!\n");
                 boinc_finish(0);
             }
