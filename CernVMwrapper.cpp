@@ -948,7 +948,7 @@ int main(int argc, char** argv) {
                             fprintf(stderr,"ERROR: GetLastError ouput for VBOX_INSTALL_PATH environment variable: %u\n", dwErr);
                             if (debug >= 3) fprintf(stderr,"NOTICE: GetLastError Aborting\n");
                         }
-                        fExist=FALSE;
+                        BOOL fExist=FALSE;
                         boinc_finish(1);
                     
                     }
