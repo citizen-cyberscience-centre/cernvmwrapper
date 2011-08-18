@@ -292,7 +292,6 @@ void VM::create() {
     time_t rawtime;
     string arg_list;
 
-
     //createvm
     arg_list="";
     arg_list="createvm --name "+virtual_machine_name+ \
@@ -1011,6 +1010,18 @@ int main(int argc, char** argv) {
         free(pszOldVal);
         free(newVirtualBoxPath);
     #endif
+
+    // First print the version of VirtualBox
+    string arg_list = " --version";
+    char version[BUFSIZE];
+
+    if (vbm_popen(arg_list, version, sizeof(version)))
+    {
+        fprintf(stderr,"\n");
+        fprintf(stderr,"VirtualBox version: %s\n", version);
+        fprintf(stderr,"\n");
+    }
+
 
     // We check if the VM has already been created and launched
     std::ifstream f("VMName");
