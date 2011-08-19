@@ -93,6 +93,7 @@ struct VM {
     time_t last_poll_point;
         
     bool suspended;
+    int  poll_err_number;
    
     VM();
     void create();
@@ -701,52 +702,69 @@ void VM::poll() {
     
     arg_list="";
     arg_list="showvminfo "+virtual_machine_name+" --machinereadable" ;
-    if (!vbm_popen(arg_list,buffer,sizeof(buffer))){
-        if (debug >= 1) fprintf(stderr,"ERROR: Get status from VM failed!\n");
-        if (debug >= 3) fprintf(stderr,"NOTICE: poll() Aborting\n");
-        remove();
-        boinc_end_critical_section();
-        boinc_finish(1);
-    }
-
-    status=buffer;
-    if(status.find("VMState=\"running\"") !=string::npos){
-        if(suspended){
-            suspended=false;
-            last_poll_point=time(NULL);
-        }
-        else{
-            current_time=time(NULL);
-            current_period += difftime (current_time,last_poll_point);
-            last_poll_point=current_time;
-            if (debug >= 4) fprintf(stderr,"INFO: VM poll is running\n");
-        }
-        boinc_end_critical_section();
-        return;
-        if (debug >= 3) fprintf(stderr,"NOTICE: VM is running!\n");  //testing
-    }
-
-    if(status.find("VMState=\"paused\"") != string::npos){
-        if(!suspended){
-            suspended=true;
-                    time_t current_time=time(NULL);
-                    current_period += difftime (current_time,last_poll_point);
-            }
-        if (debug >= 3) fprintf(stderr,"NOTICE: VM is paused!\n");  //testing
-        boinc_end_critical_section();
-        return;
-    }
-
-    if (status.find("VMState=\"poweroff\"") != string::npos)
-    {
-        if (debug >= 3)
+    if (vbm_popen(arg_list,buffer,sizeof(buffer))){
+        // Increase the number of errors
+        double wait_time = 5.0;
+        poll_err_number += 1;
+        if (debug >= 1) fprintf(stderr,"ERROR: Get status from VM failed %i time!\n", poll_err_number);
+        if (debug >= 3) fprintf(stderr,"WARNING: Sleeping poll for %f seconds!\n", wait_time);
+        boinc_sleep(wait_time);
+        if (debug >= 3) fprintf(stderr,"WARNING: Resuming poll!\n");
+        if (poll_err_number > 4)
         {
-            fprintf(stderr, "NOTICE: VM is powered off and it shouldn't\n");
-            fprintf(stderr, "NOTICE: Cancelling WU...\n");
+            if (debug >= 1) fprintf(stderr,"ERROR: Get status from VM has failed %i times!\n", poll_err_number);
+            if (debug >= 1) fprintf(stderr,"ERROR: Aborting the execution\n");
+            if (debug >= 3) fprintf(stderr,"NOTICE: poll() Aborting\n");
+            remove();
+            boinc_end_critical_section();
+            boinc_finish(1);
         }
-        boinc_end_critical_section();
-        boinc_finish(1);
-        exit(1);
+    }
+
+    else 
+    {
+        // Each time we read the status we reset the counter of errors
+        poll_err_number = 0;
+
+        status=buffer;
+        if(status.find("VMState=\"running\"") !=string::npos){
+            if(suspended){
+                suspended=false;
+                last_poll_point=time(NULL);
+            }
+            else{
+                current_time=time(NULL);
+                current_period += difftime (current_time,last_poll_point);
+                last_poll_point=current_time;
+                if (debug >= 4) fprintf(stderr,"INFO: VM poll is running\n");
+            }
+            boinc_end_critical_section();
+            return;
+            if (debug >= 3) fprintf(stderr,"NOTICE: VM is running!\n");  //testing
+        }
+
+        if(status.find("VMState=\"paused\"") != string::npos){
+            if(!suspended){
+                suspended=true;
+                        time_t current_time=time(NULL);
+                        current_period += difftime (current_time,last_poll_point);
+                }
+            if (debug >= 3) fprintf(stderr,"NOTICE: VM is paused!\n");  //testing
+            boinc_end_critical_section();
+            return;
+        }
+
+        if (status.find("VMState=\"poweroff\"") != string::npos)
+        {
+            if (debug >= 3)
+            {
+                fprintf(stderr, "NOTICE: VM is powered off and it shouldn't\n");
+                fprintf(stderr, "NOTICE: Cancelling WU...\n");
+            }
+            boinc_end_critical_section();
+            boinc_finish(1);
+            exit(1);
+        }
     }
 
 }
@@ -852,6 +870,9 @@ int main(int argc, char** argv) {
 
     // The VM
     VM vm;
+
+    // Init the errors number
+    vm.poll_err_number = 0;
 
     // Registering time for progress accounting
     time_t init_secs = time (NULL); 
