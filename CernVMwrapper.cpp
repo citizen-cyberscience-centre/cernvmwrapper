@@ -702,7 +702,7 @@ void VM::poll() {
     
     arg_list="";
     arg_list="showvminfo "+virtual_machine_name+" --machinereadable" ;
-    if (vbm_popen(arg_list,buffer,sizeof(buffer))){
+    if (!vbm_popen(arg_list,buffer,sizeof(buffer))){
         // Increase the number of errors
         double wait_time = 5.0;
         poll_err_number += 1;
