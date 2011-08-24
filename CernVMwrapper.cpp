@@ -813,7 +813,7 @@ void poll_boinc_messages(VM& vm, BOINC_STATUS &status) {
     }
 }
 
-void write_progress(time_t secs)
+void write_progress(double secs)
 {
     std::ofstream f(PROGRESS_FN);
     if (f.is_open())
@@ -823,26 +823,38 @@ void write_progress(time_t secs)
     f.close();
 }   
 
-time_t read_progress() {
+double read_progress() {
     std::ifstream f(PROGRESS_FN);
     if (f.is_open())
     {
         if (f.good()) 
         {
-            time_t stored_secs;
+            double stored_secs;
             f >> stored_secs;
             return stored_secs;
         }
-        else return 0;
+        else return -1;
     }
+    else return 0;
 }
 
-time_t update_progress(time_t secs) {
-    time_t old_secs;
+double update_progress(double secs) {
+    double old_secs;
 
     old_secs = read_progress();
-    write_progress(old_secs +  secs);
-    return(old_secs + secs);
+    if (old_secs != -1)
+    {
+        write_progress(old_secs +  secs);
+        return(old_secs + secs);
+    }
+    else
+    {
+        if (debug >= 1) fprintf(stderr,"ERROR: Reading old_secs from ProgressFile failed!\n");
+        if (debug >= 1) fprintf(stderr,"ERROR: Aborting\n");
+        boinc_finish(1);
+        return(-1);
+    
+    }
     
 }
 
@@ -1059,6 +1071,13 @@ int main(int argc, char** argv) {
         vm.remove();
         if (debug >= 3) fprintf(stderr,"NOTICE: Cleaning completed\n");
         // Then, Decompress the new VM.gz file
+        std::ifstream f(PROGRESS_FN);
+        if (f.is_open())
+        {
+            if (debug >= 3) fprintf(stderr,"NOTICE: ProgressFile should not be present. Deleting it\n");
+            f.close();
+            remove(PROGRESS_FN);
+        }
 		fprintf(stderr,"\nInitializing VM...\n");
         fprintf(stderr,"Decompressing the VM\n");
         retval = boinc_resolve_filename_s("cernvm.vmdk.gz",resolved_name);
@@ -1125,9 +1144,9 @@ int main(int argc, char** argv) {
         fprintf(stderr,"Done!\n");
     }
 
-    time_t elapsed_secs = 0, dif_secs = 0;
+    time_t elapsed_secs = 0; 
     long int t = 0;
-    double frac_done = 0; 
+    double frac_done = 0, dif_secs = 0; 
 
     vm.start(vrde,headless);
     vm.last_poll_point = time(NULL);
@@ -1148,10 +1167,10 @@ int main(int argc, char** argv) {
             }
 
             elapsed_secs = time(NULL);
-            dif_secs = update_progress(elapsed_secs - init_secs);
+            dif_secs = update_progress(difftime(elapsed_secs,init_secs));
             // Convert it for Windows machines:
             t = static_cast<int>(dif_secs);
-            if (debug >= 4) fprintf(stderr,"INFO: Running seconds %ld\n",dif_secs);
+            if (debug >= 4) fprintf(stderr,"INFO: Running seconds %f\n",dif_secs);
             // For 24 hours:
             frac_done = floor((t/86400.0)*100.0)/100.0;
             
