@@ -61,6 +61,12 @@
 #include "str_replace.h"
 #include "util.h"
 #include "error_numbers.h"
+#include "graphics2.h"
+
+#ifdef APP_GRAPHICS
+#include "CernVMwrapper.h"
+UC_SHMEM* shmem;
+#endif
 
 #define VM_NAME "VMName"
 #define CPU_TIME      "CpuTime"
@@ -871,6 +877,30 @@ double update_progress(double secs) {
     
 }
 
+#ifdef APP_GRAPHICS
+void update_shmem() {
+    if (!shmem) return;
+
+    // always do this; otherwise a graphics app will immediately
+    // assume we're not alive
+    shmem->update_time = dtime();
+
+    // Check whether a graphics app is running,
+    // and don't bother updating shmem if so.
+    // This doesn't matter here,
+    // but may be worth doing if updating shmem is expensive.
+    //
+    if (shmem->countdown > 0) {
+        // the graphics app sets this to 5 every time it renders a frame
+        shmem->countdown--;
+    } else {
+        return;
+    }
+    shmem->fraction_done = boinc_get_fraction_done();
+    shmem->cpu_time = boinc_worker_thread_cpu_time();;
+    boinc_get_status(&shmem->status);
+}
+#endif
 
 
 int main(int argc, char** argv) {
@@ -1163,6 +1193,19 @@ int main(int argc, char** argv) {
 
     vm.start(vrde,headless);
     vm.last_poll_point = time(NULL);
+
+
+    #ifdef APP_GRAPHICS
+        // create shared mem segment for graphics, and arrange to update it
+        //
+        shmem = (UC_SHMEM*)boinc_graphics_make_shmem("cernvm", sizeof(UC_SHMEM));
+        if (!shmem) {
+            if (debug >= 1) fprintf(stderr, "ERROR: failed to create shared mem segment\n");
+        }
+        update_shmem();
+        boinc_register_timer_callback(update_shmem);
+    #endif
+
     
     fprintf(stderr,"DEBUG level %i\n", debug);
     while (1) {
@@ -1218,6 +1261,9 @@ int main(int argc, char** argv) {
                 
                 }
                 if (debug >= 3) fprintf(stderr,"NOTICE: Done!\n");
+                #ifdef APP_GRAPHICS
+                    update_shmem();
+                #endif
                 boinc_finish(0);
             }
             else
