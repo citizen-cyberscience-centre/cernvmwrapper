@@ -269,6 +269,7 @@ VM::VM(){
     current_period=0;
     suspended=false;
     last_poll_point=0;
+    poll_err_number = 0;
     
     //boinc_resolve_filename_s("cernvm.vmdk.gz",disk_path);
 //  fprintf(stderr,"%s\n",disk_path.c_str());
@@ -641,18 +642,26 @@ void VM::remove(){
 	{
 		vmfolder = "RMDIR \"" + vmfolder + "\" /s /q";
 		if (system(vmfolder.c_str()) == 0)
+        {
 			if (debug >= 3) fprintf(stderr,"NOTICE: VM folder deleted!\n");
+        }
 		else
+        {
 			if (debug >= 3) fprintf(stderr,"NOTICE: System was clean, nothing to delete.\n");
+        }
 	}
     else
     {
             if (debug >= 3) fprintf(stderr,"NOTICE: VM was not registered, deleting old VM folders...\n");
 			vmfolder = "RMDIR \"" + vboxfolder + virtual_machine_name + "\" /s /q";
             if ( system(vmfolder.c_str()) == 0 )
+            {
                 if (debug >= 3) fprintf(stderr,"NOTICE: VM folder deleted!\n");
+            }
             else
+            {
                 if (debug >= 3) fprintf(stderr,"NOTICE: System was clean, nothing to delete.\n");
+            }
     }
 
 #else // GNU/Linux and Mac OS X 
@@ -672,9 +681,13 @@ void VM::remove(){
             if (debug >= 3) fprintf(stderr,"NOTICE: VM was not registered, deleting old VM folders...\n");
             vmfolder = "rm -rf \"" + string(env) + "/VirtualBox VMs/" + virtual_machine_name + "\" ";
             if ( system(vmfolder.c_str()) == 0 )
+            {
                 if (debug >= 3) fprintf(stderr,"NOTICE: VM folder deleted!\n");
+            }
             else
+            {
                 if (debug >= 3) fprintf(stderr,"NOTICE: System was clean, nothing to delete.\n");
+            }
     }
 #endif
     boinc_end_critical_section();
