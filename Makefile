@@ -5,14 +5,21 @@ BOINC_DIR = ../..
 BOINC_API_DIR = $(BOINC_DIR)/api
 BOINC_LIB_DIR = $(BOINC_DIR)/lib
 
+# CernVM-Graphics Linking
+CERNVMGRAPHICS_DIR = ../CernVM-Graphics
+
 CXXFLAGS = -g \
-    -DAPP_GRAPHICS \
     -I$(BOINC_DIR) \
     -I$(BOINC_LIB_DIR) \
     -I$(BOINC_API_DIR) \
     -L$(BOINC_API_DIR) \
     -L$(BOINC_LIB_DIR) \
     -L.
+
+ifneq ($(CERNVMGRAPHICS_DIR),)
+  CXXFLAGS += -DAPP_GRAPHICS \
+              -I$(CERNVMGRAPHICS_DIR)
+endif
 
 PROGS = CernVMwrapper
 
