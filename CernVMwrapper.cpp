@@ -64,8 +64,8 @@
 #include "graphics2.h"
 
 #ifdef APP_GRAPHICS
-#include "CernVMwrapper.h"
-UC_SHMEM* shmem;
+#include "boincShare.h" // provided by CernVM-Graphics
+Share::SharedData* Share::data;
 #endif
 
 #define VM_NAME "VMName"
@@ -879,26 +879,26 @@ double update_progress(double secs) {
 
 #ifdef APP_GRAPHICS
 void update_shmem() {
-    if (!shmem) return;
+    if (!Share::data) return;
 
     // always do this; otherwise a graphics app will immediately
     // assume we're not alive
-    shmem->update_time = dtime();
+    Share::data->update_time = dtime();
 
     // Check whether a graphics app is running,
-    // and don't bother updating shmem if so.
+    // and don't bother updating Share::data if so.
     // This doesn't matter here,
-    // but may be worth doing if updating shmem is expensive.
+    // but may be worth doing if updating Share::data is expensive.
     //
-    if (shmem->countdown > 0) {
+    if (Share::data->countdown > 0) {
         // the graphics app sets this to 5 every time it renders a frame
-        shmem->countdown--;
+        Share::data->countdown--;
     } else {
         return;
     }
-    shmem->fraction_done = boinc_get_fraction_done();
-    shmem->cpu_time = boinc_worker_thread_cpu_time();;
-    boinc_get_status(&shmem->status);
+    Share::data->fraction_done = boinc_get_fraction_done();
+    Share::data->cpu_time = boinc_worker_thread_cpu_time();;
+    boinc_get_status(&Share::data->status);
 }
 #endif
 
@@ -1198,8 +1198,8 @@ int main(int argc, char** argv) {
     #ifdef APP_GRAPHICS
         // create shared mem segment for graphics, and arrange to update it
         //
-        shmem = (UC_SHMEM*)boinc_graphics_make_shmem("cernvm", sizeof(UC_SHMEM));
-        if (!shmem) {
+        Share::data = (Share::SharedData*)boinc_graphics_make_shmem("cernvm", sizeof(Share::SharedData));
+        if (!Share::data) {
             if (debug >= 1) fprintf(stderr, "ERROR: failed to create shared mem segment\n");
         }
         update_shmem();
