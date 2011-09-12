@@ -974,117 +974,51 @@ int main(int argc, char** argv) {
     // Setting up the PATH for Windows machines:
     #ifdef _WIN32
         // DEBUG information:
-        fprintf(stderr,"\nSetting VirtualBox PATH in Windows...\n");
+        if ( debug >= 3 ) fprintf(stderr,"\nNOTICE: Setting VirtualBox PATH in Windows...\n");
 
 		// First get the HKEY_LOCAL_MACHINE\SOFTWARE\Oracle\VirtualBox
-        fprintf(stderr,"Trying to grab installation path of VirtualBox from Windows Registry...\n");
-		TCHAR szPath[4096];
-		DWORD dwType;
-		DWORD cbSize = sizeof(szPath) - sizeof(TCHAR); // Leave room for nul terminator
-		if (SHGetValue(HKEY_LOCAL_MACHINE,TEXT("SOFTWARE\\Oracle\\VirtualBox"),TEXT("InstallDir"),&dwType,szPath,&cbSize) == ERROR_SUCCESS)
-		{
-			//szPath[cbSize / sizeof(TCHAR)] = TEXT(´\0´);
-			fprintf(stderr,"Success!!! Installation PATH of VirtualBox is: %s.\n",szPath);
-		}
-		else
-		{
-			if (debug >= 1) fprintf(stderr,"ERROR: Retrieving the HKEY_LOCAL_MACHINE\\SOFTWARE\\Oracle\\VirtualBox\\InstallDir value was impossible\n\n");
+        if ( debug >= 4 ) fprintf(stderr,"INFO: Trying to grab installation path of VirtualBox from Windows Registry...\n");
+		HKEY keyHandle;
+		DWORD dwBufLen;
+		LPTSTR  szPath = NULL;
 
-            fprintf(stderr,"Trying with VBOX_INSTALL_PATH environment variable...\n");
-            LPTSTR VBoxInsPath;
-            DWORD dwRet;
-            BOOL fSuccess;
-            // Retrieve old PATH variable
-            VBoxInsPath = (LPTSTR) malloc(4096*sizeof(TCHAR));
-                if(NULL == VBoxInsPath)
-                {
-					if (debug >= 1) fprintf(stderr,"ERROR: malloc for VBoxInsPAth variable. Reason: Out of memory\n");
-                    return FALSE;
-                }
+		if ( RegOpenKeyEx( HKEY_LOCAL_MACHINE, _T("SOFTWARE\\Oracle\\VirtualBox"), 0, KEY_READ, &keyHandle) == ERROR_SUCCESS) 
+		{
+			if (RegQueryValueEx (keyHandle, _T("InstallDir"), NULL, NULL, NULL, &dwBufLen) == ERROR_SUCCESS )
+			{
+				// Allocate the buffer space
+				
+				szPath = (LPTSTR) malloc(dwBufLen);
+				(*szPath) = NULL;
+
+				// Now get the data
+				if (RegQueryValueEx (keyHandle, _T("InstallDir"), NULL, NULL, (LPBYTE)szPath, &dwBufLen) == ERROR_SUCCESS )
+				{
+
+					if (debug >= 3 ) fprintf(stderr,"NOTICE: Success!!! Installation PATH of VirtualBox is: %s;\n",szPath);
+				}
+				
+			}
+			else
+			{
+				if (debug >= 1) fprintf(stderr,"ERROR: Retrieving the HKEY_LOCAL_MACHINE\\SOFTWARE\\Oracle\\VirtualBox\\InstallDir value was impossible\n\n");
+			}
             
-                dwRet = GetEnvironmentVariable("VBOX_INSTALL_PATH", VBoxInsPath, 4096);
-            if(0 == dwRet)
-                {
-                    DWORD dwErr = GetLastError();
-                    if( ERROR_ENVVAR_NOT_FOUND == dwErr )
-                    {
-                        if (debug >= 1)
-                        {
-                            fprintf(stderr,"ERROR: VBOX_INSTALL_PATH environment variable does not exist.\n");
-    						fprintf(stderr,"ERROR: Impossible to set up the VirtualBox PATH. Aborting execution.\n\n");
-                        }
-                        BOOL fExist=FALSE;
-                        boinc_finish(1);
-                    }
-                    else
-                    {
-                        if (debug >= 1)
-                        {
-                            fprintf(stderr,"ERROR: GetLastError ouput for VBOX_INSTALL_PATH environment variable: %u\n", dwErr);
-                            if (debug >= 3) fprintf(stderr,"NOTICE: GetLastError Aborting\n");
-                        }
-                        BOOL fExist=FALSE;
-                        boinc_finish(1);
-                    
-                    }
-                }
-            free(VBoxInsPath);
+		if ( keyHandle) RegCloseKey( keyHandle );	
+
 		}
+		
+		string old_path = getenv("path");
+		if (debug >= 3) fprintf(stderr,"NOTICE: Old path %s\n", old_path.c_str());
 
-        // New variables for setting the environment variable PATH
-        LPTSTR pszOldVal;
-        LPTSTR newVirtualBoxPath;
-        LPTSTR virtualbox;
-        DWORD dwRet;
-        BOOL fSuccess;
-
-
-        // Create the new PATH variable
-        newVirtualBoxPath = (LPTSTR) malloc(4096*sizeof(TCHAR));
-        if(NULL == newVirtualBoxPath)
-            {
-				if (debug >= 1) fprintf(stderr, "ERROR: malloc for newVirtualBoxPath variable. Reason: Out of memory\n");
-                return FALSE;
-            }
-        virtualbox = szPath;
-                
-        // Retrieve old PATH variable
-        pszOldVal = (LPTSTR) malloc(4096*sizeof(TCHAR));
-            if(NULL == pszOldVal)
-            {
-				if (debug >= 1) fprintf(stderr,"ERROR: malloc of pszOldVal variable. Reason: Out of memory\n");
-                return FALSE;
-            }
-        
-            dwRet = GetEnvironmentVariable("PATH", pszOldVal, 4096);
-        if(0 == dwRet)
-            {
-                DWORD dwErr = GetLastError();
-                if( ERROR_ENVVAR_NOT_FOUND == dwErr )
-                {
-                    if (debug >= 1) fprintf(stderr,"ERROR: PATH environment variable does not exist.\n");
-                    BOOL fExist=FALSE;
-                    exit(1);
-                }
-            }
-        else
-        {
-            // DEBUG: print old PATH enviroment variable
-            fprintf(stderr,"Old PATH environment variable:\n");
-            fprintf(stderr,pszOldVal);
-            fprintf(stderr,"\n");
-            // Set new PATH environment variable
-			lstrcat(pszOldVal,";"); // Concat ; to old PATH
-			// Add VirtualBox path
-			SetEnvironmentVariable("PATH",lstrcat(pszOldVal,virtualbox));
-		    dwRet = GetEnvironmentVariable("PATH", pszOldVal, 4096);
-            fprintf(stderr,"\nAdding VirtualBox to PATH:\n");
-            fprintf(stderr,pszOldVal);
-            fprintf(stderr,"\n");
-        }
-        // Free memory
-        free(pszOldVal);
-        free(newVirtualBoxPath);
+		string new_path = "path=";
+		new_path += szPath;
+		new_path += ";";
+		new_path += old_path;
+		putenv(const_cast<char*>(new_path.c_str()));
+		if (debug >= 3) fprintf(stderr,"INFO: New path %s\n",getenv("path"));
+		
+		if ( szPath ) free( szPath );
     #endif
 
     // First print the version of VirtualBox
