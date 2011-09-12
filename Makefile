@@ -16,7 +16,7 @@ CXXFLAGS = -g \
     -L$(BOINC_LIB_DIR) \
     -L.
 
-ifneq ($(CERNVMGRAPHICS_DIR),)
+ifneq ($(wildcard $(CERNVMGRAPHICS_DIR)),)
   CXXFLAGS += -DAPP_GRAPHICS \
               -I$(CERNVMGRAPHICS_DIR)
 endif
