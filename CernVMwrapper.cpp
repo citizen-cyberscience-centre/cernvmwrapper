@@ -541,13 +541,19 @@ void VM::remove(){
 
     arg_list = "";
     arg_list = " discardstate " + virtual_machine_name;
-    if (vbm_popen(arg_list)) if (debug >= 3) fprintf(stderr,"NOTICE: VM state discarded!\n");
+    if (vbm_popen(arg_list))
+    {
+        if (debug >= 3) fprintf(stderr,"NOTICE: VM state discarded!\n");
+    }
     else if (debug >= 2) fprintf(stderr,"WARNING: it was not possible to discard the state of the VM.\n");
 
     // Unregistervm command with --delete option. VBox 4.1 should work well
     arg_list = "";
     arg_list = " unregistervm " + virtual_machine_name + " --delete";
-    if (vbm_popen(arg_list)) if (debug >= 3) fprintf(stderr, "NOTICE: VM unregistered and deleted via VBoxManage.\n");
+    if (vbm_popen(arg_list))
+    {
+        if (debug >= 3) fprintf(stderr, "NOTICE: VM unregistered and deleted via VBoxManage.\n");
+    }
     else if (debug >= 2) fprintf(stderr, "WARNING: The VM could not be removed via VBoxManage.\n");
     
     // We test if we can remove the hard disk controller. If the command works, the cernvm.vmdk virtual disk will be also
@@ -555,7 +561,10 @@ void VM::remove(){
 
     arg_list = "";
     arg_list = " storagectl  " + virtual_machine_name + " --name \"IDE Controller\" --remove";
-    if (vbm_popen(arg_list)) if (debug >= 3) fprintf(stderr, "NOTICE: Hard disk removed!\n");
+    if (vbm_popen(arg_list))
+    {
+        if (debug >= 3) fprintf(stderr, "NOTICE: Hard disk removed!\n");
+    }
     else  if (debug >= 2) fprintf(stderr,"WARNING: it was not possible to remove the IDE controller.\n");
 
 #ifdef _WIN32
