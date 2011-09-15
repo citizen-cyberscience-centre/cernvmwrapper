@@ -545,7 +545,10 @@ void VM::remove(){
     {
         if (debug >= 3) fprintf(stderr,"NOTICE: VM state discarded!\n");
     }
-    else if (debug >= 2) fprintf(stderr,"WARNING: it was not possible to discard the state of the VM.\n");
+    else 
+    {
+        if (debug >= 2) fprintf(stderr,"WARNING: it was not possible to discard the state of the VM.\n");
+    }
 
     // Unregistervm command with --delete option. VBox 4.1 should work well
     arg_list = "";
@@ -554,7 +557,10 @@ void VM::remove(){
     {
         if (debug >= 3) fprintf(stderr, "NOTICE: VM unregistered and deleted via VBoxManage.\n");
     }
-    else if (debug >= 2) fprintf(stderr, "WARNING: The VM could not be removed via VBoxManage.\n");
+    else 
+    {
+        if (debug >= 2) fprintf(stderr, "WARNING: The VM could not be removed via VBoxManage.\n");
+    }
     
     // We test if we can remove the hard disk controller. If the command works, the cernvm.vmdk virtual disk will be also
     // removed automatically
