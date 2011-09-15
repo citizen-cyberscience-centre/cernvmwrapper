@@ -100,6 +100,7 @@ struct VM {
         
     bool suspended;
     int  poll_err_number;
+    int  start_err_number;
    
     VM();
     void create();
@@ -276,6 +277,7 @@ VM::VM(){
     suspended=false;
     last_poll_point=0;
     poll_err_number = 0;
+    start_err_number = 0;
     
     //boinc_resolve_filename_s("cernvm.vmdk.gz",disk_path);
 //  fprintf(stderr,"%s\n",disk_path.c_str());
@@ -324,16 +326,19 @@ void VM::create() {
             --nic1 nat \
             --natdnsproxy1 on";
 
-    //CernVM BOINC version doesn't need hostonly network interface
-    /*
-    #ifdef _WIN32
-        arg_list+="--nic2 hostonly --hostonlyadapter2 \"VirtualBox Host-Only Ethernet Adapter\"";
-    #else
-        arg_list+="--nic2 hostonly --hostonlyadapter2 \"vboxnet0\"";
-    #endif
-    */
     vbm_popen(arg_list);
-
+    // Enable port-forwarding if compiled with the CernVM-Graphics
+#ifdef APP_GRAPHICS
+    if (debug >= 4)
+    {
+        fprintf(stderr,"INFO: Enabling Port Forwarding in the Virtual Machine\n");
+    
+    }
+    arg_list = "";
+    arg_list = " modifyvm " + virtual_machine_name + \
+               " --natpf1  \"graphicsvm,tcp,127.0.0.1,7859,,80\"";
+    vbm_popen(arg_list);
+#endif
 
     //storagectl
     arg_list="";
@@ -427,26 +432,43 @@ void VM::throttle()
     }
 }
 
-void VM::start(bool vrde=false, bool headless=false) {
+void VM::start(bool vrde=false, bool headless=false) 
+{
     // Start the VM in headless mode
-    
     boinc_begin_critical_section();
     string arg_list="";
 
-    if (headless) arg_list=" startvm "+ virtual_machine_name + " --type headless";
+    if (headless) arg_list = " startvm " + virtual_machine_name + " --type headless";
     else arg_list = " startvm "+ virtual_machine_name;
     if (!vbm_popen(arg_list))
     {
+        start_err_number += 1;
         if (debug >= 1)
         {
-            fprintf(stderr,"ERROR: Impossible to start the VM\n");
-            fprintf(stderr,"ERROR: %s\n",arg_list.c_str());
+            fprintf(stderr,"ERROR: Impossible to start the VM, seems to be locked %i time\n", start_err_number);
+            //fprintf(stderr,"ERROR: %s\n",arg_list.c_str());
+            if (debug >= 3 ) fprintf(stderr,"NOTICE: Waiting 2 seconds to unlock the VM\n");
+            boinc_sleep(2);
         }
-        if (debug >= 3) fprintf(stderr,"NOTICE: Removing VM...\n");
-        remove();
-        boinc_end_critical_section();
-        boinc_finish(1);
+
+        if (start_err_number > 4)
+        {
+            if (debug >= 1)
+            {
+                fprintf(stderr,"ERROR: Impossible to start the VM after %i times\n", start_err_number);
+                fprintf(stderr,"ERROR: Deleting the VM\n");
+            
+            }
+            if (debug >= 3) fprintf(stderr,"NOTICE: Removing VM...\n");
+            remove();
+            boinc_end_critical_section();
+            boinc_finish(1);
+        }
     }
+
+    // Resetting the error counter
+    start_err_number = 0;
+
     // Enable or disable VRDP for the VM: (by default is disabled)
     if (vrde)
     {
@@ -550,6 +572,9 @@ void VM::remove(){
         if (debug >= 2) fprintf(stderr,"WARNING: it was not possible to discard the state of the VM.\n");
     }
 
+    // Wait to allow to discard VM state cleanly
+    boinc_sleep(2);
+
     // Unregistervm command with --delete option. VBox 4.1 should work well
     arg_list = "";
     arg_list = " unregistervm " + virtual_machine_name + " --delete";
@@ -565,14 +590,14 @@ void VM::remove(){
     // We test if we can remove the hard disk controller. If the command works, the cernvm.vmdk virtual disk will be also
     // removed automatically
 
-    arg_list = "";
-    arg_list = " storagectl  " + virtual_machine_name + " --name \"IDE Controller\" --remove";
-    if (vbm_popen(arg_list))
-    {
-        if (debug >= 3) fprintf(stderr, "NOTICE: Hard disk removed!\n");
-    }
-    else  if (debug >= 2) fprintf(stderr,"WARNING: it was not possible to remove the IDE controller.\n");
-
+    //arg_list = "";
+    //arg_list = " storagectl  " + virtual_machine_name + " --name \"IDE Controller\" --remove";
+    //if (vbm_popen(arg_list))
+    //{
+    //    if (debug >= 3) fprintf(stderr, "NOTICE: Hard disk removed!\n");
+    //}
+    //else  if (debug >= 2) fprintf(stderr,"WARNING: it was not possible to remove the IDE controller.\n");
+/*
 #ifdef _WIN32
 	env = getenv("HOMEDRIVE");
 	if (debug >= 3) fprintf(stderr,"NOTICE: I'm running in a Windows system...\n");
@@ -711,6 +736,7 @@ void VM::remove(){
             }
     }
 #endif
+    */
     boinc_end_critical_section();
 }
     
