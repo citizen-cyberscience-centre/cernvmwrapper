@@ -7,6 +7,9 @@ BOINC_LIB_DIR = $(BOINC_DIR)/lib
 BOINC_BUILD_DIR = $(BOINC_DIR)/mac_build/build/Deployment
 BOINC_CONFIG_DIR =  $(BOINC_DIR)/clientgui/mac
 
+# CernVM-Graphics Linking
+CERNVMGRAPHICS_DIR = ../CernVM-Graphics
+
 CXXFLAGS = $(VARIANTFLAGS) \
 	-g \
     -I$(BOINC_CONFIG_DIR) \
@@ -17,6 +20,11 @@ CXXFLAGS = $(VARIANTFLAGS) \
     -L$(BOINC_LIB_DIR) \
     -L$(BOINC_BUILD_DIR) \
     -L.
+
+ifneq ($(wildcard $(CERNVMGRAPHICS_DIR)),)
+  CXXFLAGS += -DAPP_GRAPHICS \
+              -I$(CERNVMGRAPHICS_DIR)
+endif
 
 CC_PPC = /usr/bin/gcc-4.0
 CXX_PPC = /usr/bin/g++-4.0
