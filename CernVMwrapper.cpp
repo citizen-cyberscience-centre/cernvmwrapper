@@ -940,6 +940,7 @@ void update_shmem() {
     Share::data->fraction_done = boinc_get_fraction_done();
     Share::data->cpu_time = boinc_worker_thread_cpu_time();;
     boinc_get_status(&Share::data->status);
+    boinc_get_init_data(Share::data->init_data);
 }
 #endif
 
