@@ -590,14 +590,14 @@ void VM::remove(){
     // We test if we can remove the hard disk controller. If the command works, the cernvm.vmdk virtual disk will be also
     // removed automatically
 
-    //arg_list = "";
-    //arg_list = " storagectl  " + virtual_machine_name + " --name \"IDE Controller\" --remove";
-    //if (vbm_popen(arg_list))
-    //{
-    //    if (debug >= 3) fprintf(stderr, "NOTICE: Hard disk removed!\n");
-    //}
-    //else  if (debug >= 2) fprintf(stderr,"WARNING: it was not possible to remove the IDE controller.\n");
-/*
+    arg_list = "";
+    arg_list = " storagectl  " + virtual_machine_name + " --name \"IDE Controller\" --remove";
+    if (vbm_popen(arg_list))
+    {
+        if (debug >= 3) fprintf(stderr, "NOTICE: Hard disk removed!\n");
+    }
+    else  if (debug >= 2) fprintf(stderr,"WARNING: it was not possible to remove the IDE controller.\n");
+
 #ifdef _WIN32
 	env = getenv("HOMEDRIVE");
 	if (debug >= 3) fprintf(stderr,"NOTICE: I'm running in a Windows system...\n");
@@ -736,7 +736,7 @@ void VM::remove(){
             }
     }
 #endif
-    */
+
     boinc_end_critical_section();
 }
     
