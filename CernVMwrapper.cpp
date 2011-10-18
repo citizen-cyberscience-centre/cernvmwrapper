@@ -100,6 +100,7 @@ struct VM {
         
     bool suspended;
     int  poll_err_number;
+    int  poweroff_err_number;
     int  start_err_number;
    
     VM();
@@ -277,6 +278,7 @@ VM::VM(){
     suspended=false;
     last_poll_point=0;
     poll_err_number = 0;
+    poweroff_err_number = 0;
     start_err_number = 0;
     
     //boinc_resolve_filename_s("cernvm.vmdk.gz",disk_path);
@@ -787,20 +789,35 @@ void VM::poll() {
         poll_err_number = 0;
 
         status=buffer;
-        if(status.find("VMState=\"running\"") !=string::npos){
-            if(suspended){
+        if(status.find("VMState=\"running\"") !=string::npos)
+        {
+            if(suspended)
+            {
                 suspended=false;
                 last_poll_point=time(NULL);
             }
-            else{
+            else
+            {
                 current_time=time(NULL);
                 current_period += difftime (current_time,last_poll_point);
                 last_poll_point=current_time;
                 if (debug >= 4) fprintf(stderr,"INFO: VM poll is running\n");
             }
             boinc_end_critical_section();
+
+            // Reset poweroff error counter, as the VM is running:
+            if ((debug >= 3) and (poweroff_err_number > 0))
+            {
+                fprintf(stderr,"NOTICE: Resetting poweroff counter!\n");
+                fprintf(stderr,"NOTICE: Virtual Machine up and running again\n");
+            }
+            poweroff_err_number = 0;
             return;
-            if (debug >= 3) fprintf(stderr,"NOTICE: VM is running!\n");  //testing
+
+            //if (debug >= 3) 
+            //{
+            //    fprintf(stderr,"NOTICE: VM is running!\n");  //testing
+            //}
         }
 
         if(status.find("VMState=\"paused\"") != string::npos){
@@ -816,14 +833,25 @@ void VM::poll() {
 
         if (status.find("VMState=\"poweroff\"") != string::npos)
         {
+            poweroff_err_number += 1;
             if (debug >= 3)
             {
-                fprintf(stderr, "NOTICE: VM is powered off and it shouldn't\n");
-                fprintf(stderr, "NOTICE: Cancelling WU...\n");
+                fprintf(stderr, "NOTICE: VM is powered off and it shouldn't (%i time!)\n", poweroff_err_number);
+                fprintf(stderr, "NOTICE: Retrying to check in 2 seconds!\n");
             }
+            boinc_sleep(2);
             boinc_end_critical_section();
-            boinc_finish(1);
-            exit(1);
+            if (poweroff_err_number > 4)
+            {
+                if (debug >= 1)
+                {
+                    fprintf(stderr, "ERROR: VM has been powered off for the last %i poll calls!\n", poweroff_err_number);
+                    fprintf(stderr, "ERROR: Cancelling Work Unit!\n");
+                
+                }
+                boinc_finish(1);
+                exit(1);
+            }
         }
     }
 
@@ -844,7 +872,10 @@ void poll_boinc_messages(VM& vm, BOINC_STATUS &status) {
         exit(0);
     }
     if (status.quit_request) {
-        if (debug >= 3) fprintf(stderr,"NOTICE: BOINC status quit_request = True\n");
+        if (debug >= 3) 
+        {
+            fprintf(stderr,"NOTICE: Stopping VM and saving state!\n");
+        }
         //vm.Check();
         vm.savestate();
         exit(0);
@@ -852,7 +883,7 @@ void poll_boinc_messages(VM& vm, BOINC_STATUS &status) {
     if (status.abort_request) {
         if (debug >= 3)
         {
-            fprintf(stderr,"NOTICE: BOINC status abort_request = True\n");    
+            fprintf(stderr,"NOTICE: Aborting Work Unit!\n");    
             fprintf(stderr,"NOTICE: saving state of the vm and removing it...\n");
         }
         vm.savestate();
@@ -861,12 +892,12 @@ void poll_boinc_messages(VM& vm, BOINC_STATUS &status) {
         boinc_finish(0);
     }
     if (status.suspended) {
-        if (debug >= 4) fprintf(stderr,"INFO: BOINC status suspend = True. Stopping VM\n");
+        if (debug >= 4) fprintf(stderr,"INFO: Pausing VM!\n");
         if (!vm.suspended) {
             vm.pause();
         }
     } else {
-        if (debug >= 4) fprintf(stderr,"INFO: BOINC status suspend = False. Resuming VM\n");
+        if (debug >= 4) fprintf(stderr,"INFO: Resuming VM!\n");
         if (vm.suspended) {
             vm.resume();
         }
