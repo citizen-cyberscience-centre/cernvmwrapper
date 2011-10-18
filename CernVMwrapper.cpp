@@ -806,7 +806,7 @@ void VM::poll() {
             boinc_end_critical_section();
 
             // Reset poweroff error counter, as the VM is running:
-            if ((debug >= 3) and (poweroff_err_number > 0))
+            if ((debug >= 3) && (poweroff_err_number > 0))
             {
                 fprintf(stderr,"NOTICE: Resetting poweroff counter!\n");
                 fprintf(stderr,"NOTICE: Virtual Machine up and running again\n");
