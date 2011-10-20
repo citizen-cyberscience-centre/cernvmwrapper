@@ -190,7 +190,6 @@ void VM::create()
         string arg_list;
     
         //createvm
-        arg_list = "";
         arg_list = "createvm --name " + virtual_machine_name + " --ostype Linux26 --register";
         if (!vbm_popen(arg_list)) {
                 if (debug >= 1) {
@@ -204,7 +203,7 @@ void VM::create()
         }
     
         //modifyvm
-        arg_list = "";
+        arg_list.clr();
         arg_list = "modifyvm " + virtual_machine_name + \
                 " --memory 256 --acpi on --ioapic on \
                   --boot1 disk --boot2 none --boot3 none --boot4 none \
@@ -218,21 +217,21 @@ void VM::create()
             if (debug >= 4) {
                 fprintf(stderr,"INFO: Enabling Port Forwarding in the Virtual Machine\n");
             }
-            arg_list = "";
+            arg_list.clr();
             arg_list = " modifyvm " + virtual_machine_name + \
                        " --natpf1  \"graphicsvm,tcp,127.0.0.1,7859,,80\"";
             vbm_popen(arg_list);
         #endif
     
         //storagectl
-        arg_list = "";
+        arg_list.clr();
         arg_list = "storagectl " + virtual_machine_name + \
                    " --name \"IDE Controller\" --add ide --controller PIIX4";
         vbm_popen(arg_list);
     
     
         //storageattach
-        arg_list = "";
+        arg_list.clr();
         arg_list = "storageattach " + virtual_machine_name + \
                    " --storagectl \"IDE Controller\" \
                      --port 0 --device 0 --type hdd --medium " \
@@ -268,7 +267,7 @@ void VM::create()
 void VM::throttle()
 {
         // Check the BOINC CPU preferences for running the VM accordingly
-        string arg_list = "";
+        string arg_list;
         boinc_get_init_data(aid);
         
         if (aid.project_preferences) {
@@ -329,11 +328,11 @@ void VM::start(bool vrde=false, bool headless=false)
     
         // Enable or disable VRDP for the VM: (by default is disabled)
         if (vrde) {
-                arg_list = "";
+                arg_list.clr();
                 arg_list = " controlvm " + virtual_machine_name + " vrde on";
         }
         else {
-                arg_list = "";
+                arg_list.clr(); 
                 arg_list = " controlvm " + virtual_machine_name + " vrde off";
         }
 
@@ -341,7 +340,7 @@ void VM::start(bool vrde=false, bool headless=false)
     
         // If not running in Headless mode, don't allow the user to save, shutdown, power off or restore the VM
         if (!headless) {
-                arg_list = "";
+                arg_list.clr();
                 // Don't allow the user to save, shutdown, power off or restore the VM
                 arg_list = " setextradata " + virtual_machine_name + " GUI/RestrictedCloseActions SaveState,Shutdown,PowerOff,Restore";
                 vbm_popen(arg_list);
@@ -354,8 +353,7 @@ void VM::start(bool vrde=false, bool headless=false)
 void VM::kill() 
 {
         boinc_begin_critical_section();
-        string arg_list = "";
-        arg_list = "controlvm " + virtual_machine_name + " poweroff";
+        string arg_list("controlvm " + virtual_machine_name + " poweroff");
         vbm_popen(arg_list);
         boinc_end_critical_section();
 }
@@ -363,8 +361,7 @@ void VM::kill()
 void VM::pause() 
 {
         boinc_begin_critical_section();
-        string arg_list = "";
-        arg_list = "controlvm " + virtual_machine_name + " pause";
+        string arg_list("controlvm " + virtual_machine_name + " pause");
         if (vbm_popen(arg_list)) {
                 suspended = true;
                 time_t current_time = time(NULL);
@@ -377,8 +374,7 @@ void VM::pause()
 void VM::resume() 
 {
         boinc_begin_critical_section();
-        string arg_list = "";
-        arg_list = "controlvm " + virtual_machine_name + " resume";
+        string arg_list("controlvm " + virtual_machine_name + " resume");
         if (vbm_popen(arg_list)) {
                 suspended = false;
                 last_poll_point = time(NULL);
@@ -390,7 +386,7 @@ void VM::resume()
 void VM::Check()
 {
         boinc_begin_critical_section();
-        string arg_list = "";
+        string arg_list;
         if (suspended) {
                 arg_list= "controlvm " + virtual_machine_name + " resume";
                 vbm_popen(arg_list);
@@ -403,8 +399,7 @@ void VM::Check()
 void VM::savestate()
 {
         boinc_begin_critical_section();
-        string arg_list = "";
-        arg_list = "controlvm " + virtual_machine_name + " savestate";
+        string arg_list("controlvm " + virtual_machine_name + " savestate");
         if (!vbm_popen(arg_list))
         {
                 if (debug >= 1) fprintf(stderr, "ERROR: The VM could not be saved.\n");
@@ -419,7 +414,6 @@ void VM::remove()
         char *env;
         bool vmRegistered = false;
     
-        arg_list = "";
         arg_list = " discardstate " + virtual_machine_name;
         if (vbm_popen(arg_list)) {
                 if (debug >= 3) fprintf(stderr,"NOTICE: VM state discarded!\n");
@@ -432,7 +426,7 @@ void VM::remove()
         boinc_sleep(2);
     
         // Unregistervm command with --delete option. VBox 4.1 should work well
-        arg_list = "";
+        arg_list.clr();
         arg_list = " unregistervm " + virtual_machine_name + " --delete";
         if (vbm_popen(arg_list)) {
                 if (debug >= 3) fprintf(stderr, "NOTICE: VM unregistered and deleted via VBoxManage.\n");
@@ -444,7 +438,7 @@ void VM::remove()
         // We test if we can remove the hard disk controller. If the command works, the cernvm.vmdk virtual disk will be also
         // removed automatically
     
-        arg_list = "";
+        arg_list.clr();
         arg_list = " storagectl  " + virtual_machine_name + " --name \"IDE Controller\" --remove";
         if (vbm_popen(arg_list)) {
             if (debug >= 3) fprintf(stderr, "NOTICE: Hard disk removed!\n");
@@ -571,8 +565,7 @@ void VM::remove()
 void VM::release()
 {
     boinc_begin_critical_section();
-    string arg_list = "";
-    arg_list = "closemedium disk " + disk_path;
+    string arg_list("closemedium disk " + disk_path);
     if(!vbm_popen(arg_list)) {
             if (debug >= 1) fprintf(stderr, "ERROR: It was impossible to release the virtual hard disk\n");
     }
@@ -589,7 +582,6 @@ void VM::poll()
     char buffer[1024];
     time_t current_time;
     
-    arg_list = "";
     arg_list = "showvminfo " + virtual_machine_name + " --machinereadable";
     if (!vbm_popen(arg_list, buffer, sizeof(buffer))) {
             // Increase the number of errors
