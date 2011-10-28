@@ -94,13 +94,13 @@ int main(int argc, char** argv)
                 if (!strcmp(argv[i], "--headless")) headless = true;
                 if (!strcmp(argv[i], "--debug")) {
                         std::istringstream ArgStream(argv[i+1]);
-                        if (ArgStream >> debug)
-                                if (debug >= 4) fprintf(stderr, "INFO: Setting DEBUG level to: %i\n", debug);
+                        if (ArgStream >> vm.debug_level)
+                                if (vm.debug_level >= 4) fprintf(stderr, "INFO: Setting DEBUG level to: %i\n", vm.debug_level);
                 }
 
                 if (!strcmp(argv[i], "--vmname")) {
                         vm.virtual_machine_name = argv[i+1];
-                        if (debug >= 3) fprintf(stderr, "NOTICE: The name of the VM is: %s\n", vm.virtual_machine_name.c_str());
+                        if (vm.debug_level >= 3) fprintf(stderr, "NOTICE: The name of the VM is: %s\n", vm.virtual_machine_name.c_str());
                 }
         }
     
@@ -120,10 +120,10 @@ int main(int argc, char** argv)
         // Setting up the PATH for Windows machines:
         #ifdef _WIN32
         // DEBUG information:
-        if ( debug >= 3 ) fprintf(stderr,"\nNOTICE: Setting VirtualBox PATH in Windows...\n");
+        if ( vm.debug_level >= 3 ) fprintf(stderr,"\nNOTICE: Setting VirtualBox PATH in Windows...\n");
     
         // First get the HKEY_LOCAL_MACHINE\SOFTWARE\Oracle\VirtualBox
-        if ( debug >= 4 ) fprintf(stderr,"INFO: Trying to grab installation path of VirtualBox from Windows Registry...\n");
+        if ( vm.debug_level >= 4 ) fprintf(stderr,"INFO: Trying to grab installation path of VirtualBox from Windows Registry...\n");
         HKEY keyHandle;
         DWORD dwBufLen;
         LPTSTR  szPath = NULL;
@@ -136,30 +136,30 @@ int main(int argc, char** argv)
                         
                         // Now get the data
                         if (RegQueryValueEx (keyHandle, _T("InstallDir"), NULL, NULL, (LPBYTE)szPath, &dwBufLen) == ERROR_SUCCESS) {
-                        	if (debug >= 3 ) fprintf(stderr, "NOTICE: Success!!! Installation PATH of VirtualBox is: %s;\n", szPath);
+                        	if (vm.debug_level >= 3 ) fprintf(stderr, "NOTICE: Success!!! Installation PATH of VirtualBox is: %s;\n", szPath);
                         }
     				
                 }
                 else {
-               	        if (debug >= 1) 
+               	        if (vm.debug_level >= 1) 
                                 fprintf(stderr, "ERROR: Retrieving the HKEY_LOCAL_MACHINE\\SOFTWARE\\Oracle\\VirtualBox\\InstallDir value was impossible\n\n");
                 }
                 if (keyHandle) RegCloseKey(keyHandle);	
         }
         else {
-                if (debug >= 1)
+                if (vm.debug_level >= 1)
                         fprintf(stderr, "ERROR: Opening Windows registry!\n");
         }
     		
         string old_path = getenv("path");
-        if (debug >= 3) fprintf(stderr, "NOTICE: Old path %s\n", old_path.c_str());
+        if (vm.debug_level >= 3) fprintf(stderr, "NOTICE: Old path %s\n", old_path.c_str());
         
         string new_path = "path=";
         new_path += szPath;
         new_path += ";";
         new_path += old_path;
         putenv(const_cast<char*>(new_path.c_str()));
-        if (debug >= 3) fprintf(stderr, "INFO: New path %s\n", getenv("path"));
+        if (vm.debug_level >= 3) fprintf(stderr, "INFO: New path %s\n", getenv("path"));
         if (szPath) free(szPath);
         #endif
     
@@ -179,13 +179,13 @@ int main(int argc, char** argv)
         }
         else {
                 // First remove old versions
-                if (debug >= 3) fprintf(stderr, "NOTICE: Cleaning old VMs of the project...\n");
+                if (vm.debug_level >= 3) fprintf(stderr, "NOTICE: Cleaning old VMs of the project...\n");
                 vm.remove();
-                if (debug >= 3) fprintf(stderr, "NOTICE: Cleaning completed\n");
+                if (vm.debug_level >= 3) fprintf(stderr, "NOTICE: Cleaning completed\n");
                 // Then, Decompress the new VM.gz file
                 std::ifstream f(PROGRESS_FN);
                 if (f.is_open()) {
-                    if (debug >= 3) fprintf(stderr, "NOTICE: ProgressFile should not be present. Deleting it\n");
+                    if (vm.debug_level >= 3) fprintf(stderr, "NOTICE: ProgressFile should not be present. Deleting it\n");
                     f.close();
                     remove(PROGRESS_FN);
                 }
@@ -204,12 +204,12 @@ int main(int argc, char** argv)
     
             bool VMexist = false;
             string arg_list;
-            if (debug >= 3) fprintf(stderr, "NOTICE: Virtual machine name %s\n", vm.virtual_machine_name.c_str());
+            if (vm.debug_level >= 3) fprintf(stderr, "NOTICE: Virtual machine name %s\n", vm.virtual_machine_name.c_str());
     
             arg_list = "";
             arg_list = " list vms";
             if (!vbm_popen(arg_list, buffer, sizeof(buffer))) {
-                    if (debug >= 1) fprintf(stderr, "ERROR: CernVMManager list failed!\n");
+                    if (vm.debug_level >= 1) fprintf(stderr, "ERROR: CernVMManager list failed!\n");
                     boinc_finish(1);
             }
     
@@ -226,20 +226,20 @@ int main(int argc, char** argv)
             // Manager
     
             if (!VMexist) {
-                    if (debug >= 3) {
+                    if (vm.debug_level >= 3) {
                             fprintf(stderr, "NOTICE: VM does not exists.\n");
                             fprintf(stderr, "NOTICE: Cleaning old instances...\n");
                     }
                     vm.remove();
-                    if (debug >= 3) {
+                    if (vm.debug_level >= 3) {
                             fprintf(stderr, "NOTICE: Done!\n");
                             fprintf(stderr, "NOTICE: Unzipping image...\n");
                     }
 
                     retval = boinc_resolve_filename_s("cernvm.vmdk.gz", resolved_name);
-                    if (retval) if (debug >= 1) fprintf(stderr, "ERROR: can't resolve cernvm.vmdk.gz filename");
+                    if (retval) if (vm.debug_level >= 1) fprintf(stderr, "ERROR: can't resolve cernvm.vmdk.gz filename");
                     Helper::unzip(resolved_name.c_str(),cernvm.c_str());
-                    if (debug >= 3) fprintf(stderr, "NOTICE: Uncompressed finished\n");
+                    if (vm.debug_level >= 3) fprintf(stderr, "NOTICE: Uncompressed finished\n");
     	            fprintf(stderr,"Registering a new VM from an unzipped image...\n");
                     vm.create();
                     fprintf(stderr,"Done!\n");
@@ -247,7 +247,7 @@ int main(int argc, char** argv)
     
         }
         else {       
-                if (debug >= 3) fprintf(stderr, "NOTICE: Cleaning old instances...\n");
+                if (vm.debug_level >= 3) fprintf(stderr, "NOTICE: Cleaning old instances...\n");
                 vm.remove();
     	    	fprintf(stderr, "Registering a new VM from unzipped image...\n");
                 vm.create();
@@ -265,13 +265,13 @@ int main(int argc, char** argv)
         // create shared mem segment for graphics, and arrange to update it
         Share::data = (Share::SharedData*)boinc_graphics_make_shmem("cernvm", sizeof(Share::SharedData));
         if (!Share::data) {
-                if (debug >= 1) fprintf(stderr, "ERROR: failed to create shared mem segment\n");
+                if (vm.debug_level >= 1) fprintf(stderr, "ERROR: failed to create shared mem segment\n");
         }
         Helper::update_shmem();
         boinc_register_timer_callback(Helper::update_shmem);
         #endif
         
-        fprintf(stderr, "DEBUG level %i\n", debug);
+        fprintf(stderr, "DEBUG level %i\n", vm.debug_level);
         while (1) {
                 boinc_get_status(&status);
                 poll_boinc_messages(vm, status);
@@ -280,7 +280,7 @@ int main(int argc, char** argv)
                 if (!status.suspended) {
                         vm.poll();
                         if (vm.suspended) {
-                                if (debug >= 2) fprintf(stderr, "WARNING: VM should be running as the WU is not suspended.\n");
+                                if (vm.debug_level >= 2) fprintf(stderr, "WARNING: VM should be running as the WU is not suspended.\n");
                                 vm.resume();
                         }
     
@@ -288,23 +288,23 @@ int main(int argc, char** argv)
                         dif_secs = Helper::update_progress(difftime(elapsed_secs,init_secs));
                         // Convert it for Windows machines:
                         t = static_cast<int>(dif_secs);
-                        if (debug >= 4) fprintf(stderr, "INFO: Running seconds %f\n", dif_secs);
+                        if (vm.debug_level >= 4) fprintf(stderr, "INFO: Running seconds %f\n", dif_secs);
                         // For 24 hours:
                         frac_done = floor((t / 86400.0) * 100.0) / 100.0;
                         
-                        if (debug >= 4) fprintf(stderr, "INFO: Fraction done %f\n", frac_done);
+                        if (vm.debug_level >= 4) fprintf(stderr, "INFO: Fraction done %f\n", frac_done);
                         // Checkpoint for reporting correctly the time
                         boinc_time_to_checkpoint();
                         boinc_checkpoint_completed();
                         boinc_fraction_done(frac_done);
                         if (frac_done >= 1.0) {
-                                if (debug >= 3) fprintf(stderr, "NOTICE: Stopping the VM...\n");
+                                if (vm.debug_level >= 3) fprintf(stderr, "NOTICE: Stopping the VM...\n");
                                 vm.savestate();
-                                if (debug >= 3) fprintf(stderr, "NOTICE: VM stopped!\n");
+                                if (vm.debug_level >= 3) fprintf(stderr, "NOTICE: VM stopped!\n");
                                 vm.remove();
                                 // Update the ProgressFile for starting from zero next WU
                                 Helper::write_progress(0);
-                                if (debug >= 3) {
+                                if (vm.debug_level >= 3) {
                                         fprintf(stderr,"NOTICE: Done!! Cleanly exiting.\n");
                                         fprintf(stderr,"NOTICE: Work Unit completed.\n");
                                         fprintf(stderr,"NOTICE: Creating output file...\n");
@@ -316,7 +316,7 @@ int main(int argc, char** argv)
                                                 f.close();
                                         }
                                 }
-                                if (debug >= 3) fprintf(stderr, "NOTICE: Done!\n");
+                                if (vm.debug_level >= 3) fprintf(stderr, "NOTICE: Done!\n");
                                 #ifdef APP_GRAPHICS
                                 Helper::update_shmem();
                                 #endif
