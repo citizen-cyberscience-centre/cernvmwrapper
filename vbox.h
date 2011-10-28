@@ -35,6 +35,7 @@ struct VM {
         
         VM();
         void create();
+        bool exists();
         void throttle();
         void start(bool vrde, bool headless);
         void kill();
@@ -264,6 +265,18 @@ void VM::create()
         }
 }
 
+bool VM::exists()
+{
+        std::ifstream f("VMName");
+        if (f.is_open()) {
+                f.close();
+                return true;
+        } 
+        else {
+                return false;
+        }
+}
+
 void VM::throttle()
 {
         // Check the BOINC CPU preferences for running the VM accordingly
@@ -325,6 +338,7 @@ void VM::start(bool vrde=false, bool headless=false)
     
         // Resetting the error counter
         start_err_number = 0;
+        if (debug_level >=3) cerr << "NOTICE: VM has been started!" << endl;
     
         // Enable or disable VRDP for the VM: (by default is disabled)
         if (vrde) {

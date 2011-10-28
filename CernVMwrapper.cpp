@@ -117,50 +117,13 @@ int main(int argc, char** argv)
         
         boinc_init_options(&options);
     
-        // Setting up the PATH for Windows machines:
         #ifdef _WIN32
-        // DEBUG information:
-        if ( vm.debug_level >= 3 ) fprintf(stderr,"\nNOTICE: Setting VirtualBox PATH in Windows...\n");
-    
-        // First get the HKEY_LOCAL_MACHINE\SOFTWARE\Oracle\VirtualBox
-        if ( vm.debug_level >= 4 ) fprintf(stderr,"INFO: Trying to grab installation path of VirtualBox from Windows Registry...\n");
-        HKEY keyHandle;
-        DWORD dwBufLen;
-        LPTSTR  szPath = NULL;
-    
-        if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, _T("SOFTWARE\\Oracle\\VirtualBox"), 0, KEY_READ, &keyHandle) == ERROR_SUCCESS) {
-	        if (RegQueryValueEx(keyHandle, _T("InstallDir"), NULL, NULL, NULL, &dwBufLen) == ERROR_SUCCESS) {
-                        // Allocate the buffer space
-                        szPath = (LPTSTR) malloc(dwBufLen);
-                        (*szPath) = NULL;
-                        
-                        // Now get the data
-                        if (RegQueryValueEx (keyHandle, _T("InstallDir"), NULL, NULL, (LPBYTE)szPath, &dwBufLen) == ERROR_SUCCESS) {
-                        	if (vm.debug_level >= 3 ) fprintf(stderr, "NOTICE: Success!!! Installation PATH of VirtualBox is: %s;\n", szPath);
-                        }
-    				
-                }
-                else {
-               	        if (vm.debug_level >= 1) 
-                                fprintf(stderr, "ERROR: Retrieving the HKEY_LOCAL_MACHINE\\SOFTWARE\\Oracle\\VirtualBox\\InstallDir value was impossible\n\n");
-                }
-                if (keyHandle) RegCloseKey(keyHandle);	
+        // Setting up the PATH for Windows machines:
+        if (!Helper::SettingWindowsPath()) {
+                cerr << "ERROR: Impossible to set VirtualBox path" << endl;
+                cerr << "Aborting!" << endl;
+                boinc_finish(0);
         }
-        else {
-                if (vm.debug_level >= 1)
-                        fprintf(stderr, "ERROR: Opening Windows registry!\n");
-        }
-    		
-        string old_path = getenv("path");
-        if (vm.debug_level >= 3) fprintf(stderr, "NOTICE: Old path %s\n", old_path.c_str());
-        
-        string new_path = "path=";
-        new_path += szPath;
-        new_path += ";";
-        new_path += old_path;
-        putenv(const_cast<char*>(new_path.c_str()));
-        if (vm.debug_level >= 3) fprintf(stderr, "INFO: New path %s\n", getenv("path"));
-        if (szPath) free(szPath);
         #endif
     
         // First print the version of VirtualBox
@@ -172,17 +135,12 @@ int main(int argc, char** argv)
         }
     
         // We check if the VM has already been created and launched
-        std::ifstream f("VMName");
-        if (f.is_open()) {
-                f.close();
-                vm_name = true;
-        }
-        else {
+        if (!vm.exists()) {
                 // First remove old versions
                 if (vm.debug_level >= 3) fprintf(stderr, "NOTICE: Cleaning old VMs of the project...\n");
                 vm.remove();
                 if (vm.debug_level >= 3) fprintf(stderr, "NOTICE: Cleaning completed\n");
-                // Then, Decompress the new VM.gz file
+
                 std::ifstream f(PROGRESS_FN);
                 if (f.is_open()) {
                     if (vm.debug_level >= 3) fprintf(stderr, "NOTICE: ProgressFile should not be present. Deleting it\n");
@@ -190,68 +148,23 @@ int main(int argc, char** argv)
                     remove(PROGRESS_FN);
                 }
 
+                // Then, Decompress the new VM.gz file
     	    	fprintf(stderr, "\nInitializing VM...\n");
                 fprintf(stderr, "Decompressing the VM\n");
                 retval = boinc_resolve_filename_s("cernvm.vmdk.gz", resolved_name);
                 if (retval) fprintf(stderr, "can't resolve cernvm.vmdk.gz filename");
                 Helper::unzip(resolved_name.c_str(), cernvm.c_str());
                 fprintf(stderr, "Uncompressed finished\n");
-                vm_name = false;
-        }
-    
-        if (vm_name) {
-            fprintf(stderr, "VMName exists\n");
-    
-            bool VMexist = false;
-            string arg_list;
-            if (vm.debug_level >= 3) fprintf(stderr, "NOTICE: Virtual machine name %s\n", vm.virtual_machine_name.c_str());
-    
-            arg_list = "";
-            arg_list = " list vms";
-            if (!vbm_popen(arg_list, buffer, sizeof(buffer))) {
-                    if (vm.debug_level >= 1) fprintf(stderr, "ERROR: CernVMManager list failed!\n");
-                    boinc_finish(1);
-            }
-    
-            string VMlist = buffer;
-            // DEBUG for the list of running VMs
-            // fprintf(stderr,"List of running VMs:\n");
-            // fprintf(stderr,VMlist.c_str());
-            // fprintf(stderr,"\n");
-            if (VMlist.find(vm.virtual_machine_name.c_str()) != string::npos) {
-                    VMexist=true;
-            }
-    
-            // Maybe voluteers deleted the Virtual Machine using the VirtualBox
-            // Manager
-    
-            if (!VMexist) {
-                    if (vm.debug_level >= 3) {
-                            fprintf(stderr, "NOTICE: VM does not exists.\n");
-                            fprintf(stderr, "NOTICE: Cleaning old instances...\n");
-                    }
-                    vm.remove();
-                    if (vm.debug_level >= 3) {
-                            fprintf(stderr, "NOTICE: Done!\n");
-                            fprintf(stderr, "NOTICE: Unzipping image...\n");
-                    }
 
-                    retval = boinc_resolve_filename_s("cernvm.vmdk.gz", resolved_name);
-                    if (retval) if (vm.debug_level >= 1) fprintf(stderr, "ERROR: can't resolve cernvm.vmdk.gz filename");
-                    Helper::unzip(resolved_name.c_str(),cernvm.c_str());
-                    if (vm.debug_level >= 3) fprintf(stderr, "NOTICE: Uncompressed finished\n");
-    	            fprintf(stderr,"Registering a new VM from an unzipped image...\n");
-                    vm.create();
-                    fprintf(stderr,"Done!\n");
-            }
-    
-        }
-        else {       
-                if (vm.debug_level >= 3) fprintf(stderr, "NOTICE: Cleaning old instances...\n");
-                vm.remove();
+                // Create VM and register
+                if (vm.debug_level >= 3) fprintf(stderr, "NOTICE: Virtual machine name %s\n", vm.virtual_machine_name.c_str());
     	    	fprintf(stderr, "Registering a new VM from unzipped image...\n");
                 vm.create();
-                fprintf(stderr, "Done!\n");
+                fprintf(stderr, "VM successfully registered and created!\n");
+
+        }
+        else {
+                cerr << "VM exists, starting it..." << endl;
         }
     
         time_t elapsed_secs = 0; 

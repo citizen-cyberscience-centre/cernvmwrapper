@@ -32,6 +32,71 @@ namespace Helper
                 GetVersionEx(&osv);
                 return (osv.dwPlatformId == VER_PLATFORM_WIN32_NT);
         }
+
+        bool SettingWindowsPath()
+        {
+                // DEBUG information:
+                fprintf(stderr,"\nNOTICE: Setting VirtualBox PATH in Windows...\n");
+
+                // First, we try to check if the VirtualBox path exists
+                string old_path = getenv("path");
+                string vbox_path = getenv("ProgramFiles");
+                vbox_path += "\\Oracle\\VirtualBox";
+
+                if (GetFileAttributes(vbox_path.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                        fprintf(stderr, "NOTICE: Success!!! Installation PATH of VirtualBox is: %s\n", vbox_path.c_str());
+                        string new_path = "path=";
+                        new_path += vbox_path;
+                        new_path += ";";
+                        new_path += old_path;
+                        putenv(const_cast<char*>(new_path.c_str()));
+                        fprintf(stderr, "INFO: New path %s\n", getenv("path"));
+                        return (true);
+                }
+                else {
+                        cerr << "ERROR: failing detecting the folder, trying with registry..." << endl;
+                        // Second get the HKEY_LOCAL_MACHINE\SOFTWARE\Oracle\VirtualBox
+                        fprintf(stderr,"INFO: Trying to grab installation path of VirtualBox from Windows Registry...\n");
+                        HKEY keyHandle;
+                        DWORD dwBufLen;
+                        LPTSTR  szPath = NULL;
+    
+                        if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, _T("SOFTWARE\\Oracle\\VirtualBox"), 0, KEY_READ, &keyHandle) == ERROR_SUCCESS) {
+	                        if (RegQueryValueEx(keyHandle, _T("InstallDir"), NULL, NULL, NULL, &dwBufLen) == ERROR_SUCCESS) {
+                                        // Allocate the buffer space
+                                        szPath = (LPTSTR) malloc(dwBufLen);
+                                        (*szPath) = NULL;
+                                        
+                                        // Now get the data
+                                        if (RegQueryValueEx (keyHandle, _T("InstallDir"), NULL, NULL, (LPBYTE)szPath, &dwBufLen) == ERROR_SUCCESS) {
+                                        	fprintf(stderr, "NOTICE: Success!!! Installation PATH of VirtualBox is: %s;\n", szPath);
+                                                fprintf(stderr, "NOTICE: Old path %s\n", old_path.c_str());
+                                                
+                                                string new_path = "path=";
+                                                new_path += szPath;
+                                                new_path += ";";
+                                                new_path += old_path;
+                                                putenv(const_cast<char*>(new_path.c_str()));
+                                                fprintf(stderr, "INFO: New path %s\n", getenv("path"));
+                                                if (szPath) free(szPath);
+                                                return(true);
+                                        }
+    	                			
+                                }
+                                else {
+                                                fprintf(stderr, "ERROR: Retrieving the HKEY_LOCAL_MACHINE\\SOFTWARE\\Oracle\\VirtualBox\\InstallDir value was impossible\n\n");
+                                }
+                                if (keyHandle) RegCloseKey(keyHandle);	
+                                return (false);
+                        }
+                        else {
+                                fprintf(stderr, "ERROR: Opening Windows registry!\n");
+                                return (false);
+                        }
+                }
+        }
+
+
         #endif
 
         void write_progress(double secs)
