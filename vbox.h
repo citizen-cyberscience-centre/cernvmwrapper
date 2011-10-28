@@ -604,7 +604,7 @@ void VM::poll()
             // Each time we read the status we reset the counter of errors
             poll_err_number = 0;
 
-            status=buffer;
+            status = buffer;
             if (status.find("VMState=\"running\"") != string::npos) {
                     if (suspended) {
                             suspended=false;
@@ -613,7 +613,7 @@ void VM::poll()
                     else {
                             current_time=time(NULL);
                             current_period += difftime (current_time,last_poll_point);
-                            last_poll_point=current_time;
+                            last_poll_point = current_time;
                             if (debug_level >= 4) fprintf(stderr,"INFO: VM poll is running\n");
                     }
 
@@ -673,7 +673,7 @@ void poll_boinc_messages(VM& vm, BOINC_STATUS &status)
         if (status.no_heartbeat) {
                 if (vm.debug_level >= 3) fprintf(stderr, "NOTICE: BOINC no_heartbeat\n");
                 vm.savestate();
-                exit(0);
+                boinc_temporary_exit(0);
         }
 
         if (status.quit_request) {
@@ -681,7 +681,7 @@ void poll_boinc_messages(VM& vm, BOINC_STATUS &status)
                         fprintf(stderr, "NOTICE: Stopping VM and saving state!\n");
                 }
                 vm.savestate();
-                exit(0);
+                boinc_temporary_exit(0);
         }
 
         if (status.abort_request) {
@@ -692,7 +692,7 @@ void poll_boinc_messages(VM& vm, BOINC_STATUS &status)
                 vm.savestate();
                 vm.remove();
                 if (vm.debug_level >= 3) fprintf(stderr, "NOTICE: VM removed and task aborted\n");
-                boinc_finish(0);
+                boinc_finish(EXIT_ABORTED_BY_CLIENT);
         }
 
         if (status.suspended) {
