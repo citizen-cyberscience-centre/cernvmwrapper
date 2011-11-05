@@ -32,6 +32,7 @@ struct VM {
         int  poweroff_err_number;
         int  start_err_number;
         int  debug_level;
+        int  n_cpus;
         
         VM();
         void create();
@@ -88,7 +89,7 @@ bool vbm_popen(string arg_list, char * buffer=NULL, int nSize=1024,
         si.dwFlags = STARTF_USESHOWWINDOW;
         si.wShowWindow = SW_HIDE;
 
-        if (buffer!=NULL) {
+        if (buffer != NULL) {
                 si.dwFlags = STARTF_USESTDHANDLES|si.dwFlags;
                 si.hStdOutput = newstdout;
                 si.hStdError = newstdout;   //set the new handles for the child process
@@ -173,6 +174,7 @@ VM::VM() {
         poweroff_err_number = 0;
         start_err_number = 0;
         debug_level = 3;
+        n_cpus = 1;
         
         boinc_getcwd(buffer);
         disk_name = "cernvm.vmdk";
@@ -189,7 +191,7 @@ void VM::create()
 {
         time_t rawtime;
         string arg_list;
-    
+
         //createvm
         arg_list = "createvm --name " + virtual_machine_name + " --ostype Linux26 --register";
         if (!vbm_popen(arg_list)) {
@@ -205,8 +207,10 @@ void VM::create()
     
         //modifyvm
         arg_list.clear();
+        std::stringstream tmp;
+        tmp << n_cpus;
         arg_list = "modifyvm " + virtual_machine_name + \
-                " --memory 256 --acpi on --ioapic on \
+                " --cpus " + tmp.str() + " --memory 256 --acpi on --ioapic on \
                   --boot1 disk --boot2 none --boot3 none --boot4 none \
                   --nic1 nat \
                   --natdnsproxy1 on";
@@ -282,7 +286,9 @@ void VM::throttle()
         // Check the BOINC CPU preferences for running the VM accordingly
         string arg_list;
         boinc_get_init_data(aid);
-        
+
+        cerr << "INFO: Number of cores: " << n_cpus << endl;
+
         if (aid.project_preferences) {
                 if (!aid.project_preferences) return;
                 double max_vm_cpu_pct = 100.0;

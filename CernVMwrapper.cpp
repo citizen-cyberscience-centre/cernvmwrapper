@@ -79,11 +79,7 @@ int main(int argc, char** argv)
         string cernvm = "cernvm.vmdk";
         string resolved_name;
     
-        // Get BOINC APP INIT DATA
-        boinc_get_init_data(aid);
-    
         VM vm;
-    
         vm.poll_err_number = 0;
     
         // Registering time for progress accounting
@@ -133,7 +129,17 @@ int main(int argc, char** argv)
         if (vbm_popen(arg_list, version, sizeof(version))) {
                 cerr << "VirtualBox version: " << version << endl;
         }
+
+        // Get BOINC APP INIT DATA to set how many cores will use the VM
+        boinc_get_init_data(aid);
+
+        cerr << "Available cores: " << aid.host_info.p_ncpus << endl;
+        cerr << "According to BOINC preferences use only this percentage of the number of cores: " << aid.global_prefs.max_ncpus_pct << endl;
+
+        vm.n_cpus = int (aid.host_info.p_ncpus * aid.global_prefs.max_ncpus_pct);
     
+        cerr << "This work unit will use " << vm.n_cpus << " cores" << endl;
+
         // We check if the VM has already been created and launched
         if (!vm.exists()) {
                 // First remove old versions
