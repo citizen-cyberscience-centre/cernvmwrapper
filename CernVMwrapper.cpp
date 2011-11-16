@@ -139,7 +139,13 @@ int main(int argc, char** argv)
         double tmp_n_cpus = (aid.host_info.p_ncpus * (aid.global_prefs.max_ncpus_pct / 100));
 
         if (tmp_n_cpus > 1) {
-                vm.n_cpus = static_cast<int>(floor(tmp_n_cpus));
+                if (tmp_n_cpus >= 3) {
+                        cerr << "A maxixum of 3 cores will be used, no benefit with more" << endl;
+                        vm.n_cpus = 3;
+                }
+                else {
+                        vm.n_cpus = static_cast<int>(floor(tmp_n_cpus));
+                }
         }
 
         cerr << "This work unit will use " << vm.n_cpus << " cores" << endl;
