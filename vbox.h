@@ -24,7 +24,6 @@ struct VM {
         string disk_name;
         string disk_path;
         string name_path;
-        string guest_additions_path;
         
         double current_period;
         time_t last_poll_point;
@@ -49,7 +48,6 @@ struct VM {
         void remove();
         void release(); 
         void poll();
-        void installGuestAdditions();
 };
 
 //void write_cputime(double);
@@ -190,58 +188,6 @@ VM::VM() {
         name_path += VM_NAME;
 }   
 
-void VM::installGuestAdditions()
-{
-        string arg_list = "list dvds";
-        string guest_additions_iso ="VBoxGuestAdditions.iso"; 
-        string location_str = "Location:    ";
-        char buffer[4096];
-
-        if (!vbm_popen(arg_list, buffer, sizeof(buffer))) {
-                cerr << "ERROR: Retrieving the Guest Additions ISO path" << endl; 
-                return;
-        }
-
-        string output = buffer;
-        bool stop = false;
-        size_t position;
-
-        // We search for the ISO file name and save the position. Then, we
-        // reverse the search for Location:, so we will have the chunks of the
-        // string that have to been removed for getting the full path of the ISO
-        position = output.find(guest_additions_iso);
-        if (position != string::npos) {
-                if (debug_level >= 4) {
-                        cerr << "INFO: Guest Additions ISO found!" << endl;
-                }
-
-                size_t init = output.rfind(location_str, position);
-                guest_additions_path = output.substr(init + location_str.size(), (position - (init + location_str.size())));
-                guest_additions_path += guest_additions_iso;
-                if (debug_level >= 4) {
-                        cerr << "ISO: " ;
-                        cerr << guest_additions_path << endl;
-                }
-
-                arg_list.clear();
-                arg_list = "storageattach " + virtual_machine_name + \
-                           " --storagectl \"IDE Controller\" \
-                             --port 0 --device 1 --type dvddrive --medium " \
-                           + guest_additions_path;
-
-                if (!vbm_popen(arg_list)) {
-                        if (debug_level >= 1) {
-                                fprintf(stderr, "ERROR: Adding Guest Additions failed!\n");
-                                fprintf(stderr, "ERROR: %s\n",arg_list.c_str());
-                        }
-                }
-        }
-        else {
-                cerr << "VirtualBox Guest Additions ISO not found :(" << endl;
-        }
-
-}
-
 void VM::create() 
 {
         time_t rawtime;
@@ -307,9 +253,6 @@ void VM::create()
                 boinc_finish(1);
                 exit(0);
         }
-
-        // Install Guest Additions
-        installGuestAdditions(); 
 
         // Create VM
         std::ofstream f(name_path.c_str());
