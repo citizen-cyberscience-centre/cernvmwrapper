@@ -91,12 +91,16 @@ int main(int argc, char** argv)
                 if (!strcmp(argv[i], "--debug")) {
                         std::istringstream ArgStream(argv[i+1]);
                         if (ArgStream >> vm.debug_level)
-                                if (vm.debug_level >= 4) fprintf(stderr, "INFO: Setting DEBUG level to: %i\n", vm.debug_level);
+                                if (vm.debug_level >= 4) {
+                                        cerr << "INFO: Setting DEBUG level to: " << vm.debug_level << endl;
+                                }
                 }
 
                 if (!strcmp(argv[i], "--vmname")) {
                         vm.virtual_machine_name = argv[i+1];
-                        if (vm.debug_level >= 3) fprintf(stderr, "NOTICE: The name of the VM is: %s\n", vm.virtual_machine_name.c_str());
+                        if (vm.debug_level >= 3) {
+                                cerr << "NOTICE: The name of the VM is: " << vm.virtual_machine_name << endl;
+                        }
                 }
         }
     
@@ -153,31 +157,45 @@ int main(int argc, char** argv)
         // We check if the VM has already been created and launched
         if (!vm.exists()) {
                 // First remove old versions
-                if (vm.debug_level >= 3) fprintf(stderr, "NOTICE: Cleaning old VMs of the project...\n");
+                if (vm.debug_level >= 3) {
+                        cerr << "NOTICE: Cleaning old VMs of the project..." << endl;
+                }
+
                 vm.remove();
-                if (vm.debug_level >= 3) fprintf(stderr, "NOTICE: Cleaning completed\n");
+
+                if (vm.debug_level >= 3) {
+                        cerr << "NOTICE: Cleaning completed" << endl;
+                }
 
                 std::ifstream f(PROGRESS_FN);
                 if (f.is_open()) {
-                    if (vm.debug_level >= 3) fprintf(stderr, "NOTICE: ProgressFile should not be present. Deleting it\n");
+                    if (vm.debug_level >= 3) {
+                            cerr << "NOTICE: ProgressFile should not exists. Deleting it" << endl;
+                    }
                     f.close();
                     remove(PROGRESS_FN);
                 }
 
                 // Then, Decompress the new VM.gz file
-    	    	fprintf(stderr, "\nInitializing VM...\n");
-                fprintf(stderr, "Decompressing the VM\n");
+                cerr << endl << "Initializing the VM..." << endl;
+                cerr << "Decompressing the VM" << endl;
                 retval = boinc_resolve_filename_s("cernvm.vmdk.gz", resolved_name);
-                if (retval) fprintf(stderr, "can't resolve cernvm.vmdk.gz filename");
+                if (retval) {
+                        cerr << "ERROR: Impossible to resolve file name: cernvm.vmdk.gz" << endl;
+                        cerr << "ERROR: Aborting WU" << endl;
+                        boinc_finish(1);
+                }
+
                 Helper::unzip(resolved_name.c_str(), cernvm.c_str());
-                fprintf(stderr, "Uncompressed finished\n");
+                cerr << "Virtual Disk uncompressed. Ready to create the VM" << endl;
 
                 // Create VM and register
-                if (vm.debug_level >= 3) fprintf(stderr, "NOTICE: Virtual machine name %s\n", vm.virtual_machine_name.c_str());
-    	    	fprintf(stderr, "Registering a new VM from unzipped image...\n");
+                if (vm.debug_level >= 3) {
+                        cerr << "NOTICE: Virtual machine name: " << vm.virtual_machine_name << endl; 
+                }
+                cerr << "Registering a new VM from unzipped image..." << endl;
                 vm.create();
-                fprintf(stderr, "VM successfully registered and created!\n");
-
+                cerr << "VM successfully registered and created!" << endl;
         }
         else {
                 cerr << "VM exists, starting it..." << endl;
@@ -194,13 +212,13 @@ int main(int argc, char** argv)
         // create shared mem segment for graphics, and arrange to update it
         Share::data = (Share::SharedData*)boinc_graphics_make_shmem("cernvm", sizeof(Share::SharedData));
         if (!Share::data) {
-                if (vm.debug_level >= 1) fprintf(stderr, "ERROR: failed to create shared mem segment\n");
+                cerr << "ERROR: failed to created shared mem segment" << endl;
         }
         Helper::update_shmem();
         boinc_register_timer_callback(Helper::update_shmem);
         #endif
         
-        fprintf(stderr, "DEBUG level %i\n", vm.debug_level);
+        cerr << "DEBUG level: " << vm.debug_level << endl;
         while (1) {
                 boinc_get_status(&status);
                 poll_boinc_messages(vm, status);
@@ -209,7 +227,9 @@ int main(int argc, char** argv)
                 if (!status.suspended) {
                         vm.poll();
                         if (vm.suspended) {
-                                if (vm.debug_level >= 2) fprintf(stderr, "WARNING: VM should be running as the WU is not suspended.\n");
+                                if (vm.debug_level >= 2) {
+                                        cerr << "WARNING: VM should be running as the WU is not suspended" << endl;
+                                }
                                 vm.resume();
                         }
     
@@ -217,26 +237,33 @@ int main(int argc, char** argv)
                         dif_secs = Helper::update_progress(difftime(elapsed_secs,init_secs));
                         // Convert it for Windows machines:
                         t = static_cast<int>(dif_secs);
-                        if (vm.debug_level >= 4) fprintf(stderr, "INFO: Running seconds %f\n", dif_secs);
+                        if (vm.debug_level >= 4) {
+                                cerr << "INFO: Running seconds " << dif_secs << endl;
+                        }
                         // For 24 hours:
                         frac_done = floor((t / 86400.0) * 100.0) / 100.0;
                         
-                        if (vm.debug_level >= 4) fprintf(stderr, "INFO: Fraction done %f\n", frac_done);
+                        if (vm.debug_level >= 4) {
+                                cerr << "INFO: Fraction done " << frac_done << endl;
+                        }
                         // Checkpoint for reporting correctly the time
                         boinc_time_to_checkpoint();
                         boinc_checkpoint_completed();
                         boinc_fraction_done(frac_done);
                         if (frac_done >= 1.0) {
-                                if (vm.debug_level >= 3) fprintf(stderr, "NOTICE: Stopping the VM...\n");
+                                if (vm.debug_level >= 3) {
+                                        cerr << "NOTICE: Stopping the VM..." << endl; 
+                                }
                                 vm.savestate();
-                                if (vm.debug_level >= 3) fprintf(stderr, "NOTICE: VM stopped!\n");
+                                if (vm.debug_level >= 3) {
+                                        cerr << "NOTICE: VM stopped!" << endl; 
+                                }
                                 vm.remove();
                                 // Update the ProgressFile for starting from zero next WU
                                 Helper::write_progress(0);
                                 if (vm.debug_level >= 3) {
-                                        fprintf(stderr,"NOTICE: Done!! Cleanly exiting.\n");
-                                        fprintf(stderr,"NOTICE: Work Unit completed.\n");
-                                        fprintf(stderr,"NOTICE: Creating output file...\n");
+                                        cerr << "NOTICE: Work Unit completed" << endl;
+                                        cerr << "NOTICE: Creating output file..." << endl;
                                 }
                                 std::ofstream f("output");
                                 if (f.is_open()) {
@@ -245,7 +272,9 @@ int main(int argc, char** argv)
                                                 f.close();
                                         }
                                 }
-                                if (vm.debug_level >= 3) fprintf(stderr, "NOTICE: Done!\n");
+                                if (vm.debug_level >= 3) {
+                                        cerr << "NOTICE: Done!" << endl; 
+                                }
                                 #ifdef APP_GRAPHICS
                                 Helper::update_shmem();
                                 #endif

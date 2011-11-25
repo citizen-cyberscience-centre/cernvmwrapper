@@ -36,7 +36,7 @@ namespace Helper
         bool SettingWindowsPath()
         {
                 // DEBUG information:
-                fprintf(stderr,"\nNOTICE: Setting VirtualBox PATH in Windows...\n");
+                cerr << "Setting VirtualBox PATH in Windows..." << endl;
 
                 // First, we try to check if the VirtualBox path exists
                 string old_path = getenv("path");
@@ -44,19 +44,19 @@ namespace Helper
                 vbox_path += "\\Oracle\\VirtualBox";
 
                 if (GetFileAttributes(vbox_path.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                        fprintf(stderr, "NOTICE: Success!!! Installation PATH of VirtualBox is: %s\n", vbox_path.c_str());
+                        cerr << "NOTICE: Success!!! Installation PATH of VirtualBox is: " << vbox_path << endl;
                         string new_path = "path=";
                         new_path += vbox_path;
                         new_path += ";";
                         new_path += old_path;
                         putenv(const_cast<char*>(new_path.c_str()));
-                        fprintf(stderr, "INFO: New path %s\n", getenv("path"));
+                        cerr << "INFO: New PATH " << getenv("path") << endl;
                         return (true);
                 }
                 else {
                         cerr << "ERROR: failing detecting the folder, trying with registry..." << endl;
                         // Second get the HKEY_LOCAL_MACHINE\SOFTWARE\Oracle\VirtualBox
-                        fprintf(stderr,"INFO: Trying to grab installation path of VirtualBox from Windows Registry...\n");
+                        cerr << "INFO: Trying to get the installation PATH of VirtualBox from the Windows Registry..." << endl;
                         HKEY keyHandle;
                         DWORD dwBufLen;
                         LPTSTR  szPath = NULL;
@@ -69,28 +69,28 @@ namespace Helper
                                         
                                         // Now get the data
                                         if (RegQueryValueEx (keyHandle, _T("InstallDir"), NULL, NULL, (LPBYTE)szPath, &dwBufLen) == ERROR_SUCCESS) {
-                                        	fprintf(stderr, "NOTICE: Success!!! Installation PATH of VirtualBox is: %s;\n", szPath);
-                                                fprintf(stderr, "NOTICE: Old path %s\n", old_path.c_str());
+                                                cerr << "NOTICE: Success!!! Installation PATH of VirtualBox is: " << szPath << endl;
+                                                cerr << "NOTICE: Old PATH: " << old_path << endl;
                                                 
                                                 string new_path = "path=";
                                                 new_path += szPath;
                                                 new_path += ";";
                                                 new_path += old_path;
                                                 putenv(const_cast<char*>(new_path.c_str()));
-                                                fprintf(stderr, "INFO: New path %s\n", getenv("path"));
+                                                cerr << "INFO: New PATH: " << getenv("path") << endl;
                                                 if (szPath) free(szPath);
                                                 return(true);
                                         }
     	                			
                                 }
                                 else {
-                                                fprintf(stderr, "ERROR: Retrieving the HKEY_LOCAL_MACHINE\\SOFTWARE\\Oracle\\VirtualBox\\InstallDir value was impossible\n\n");
+                                             cerr << "ERROR: Retrieving the HKEY_LOCAL_MACHINE\\SOFTWARE\\Oracle\\VirtualBox\\InstallDir value was impossible" << endl;
                                 }
                                 if (keyHandle) RegCloseKey(keyHandle);	
                                 return (false);
                         }
                         else {
-                                fprintf(stderr, "ERROR: Opening Windows registry!\n");
+                                cerr << "ERROR: Opening Windows Registry" << endl;
                                 return (false);
                         }
                 }

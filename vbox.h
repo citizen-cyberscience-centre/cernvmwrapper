@@ -79,7 +79,7 @@ bool vbm_popen(string arg_list, char * buffer=NULL, int nSize=1024,
 
             //create stdout pipe
             if (!CreatePipe(&read_stdout,&newstdout,&sa,0)) {
-                    fprintf(stderr,"CreatePipe Failed\n");
+                    cerr << "ERROR: CreatePipe failed!!" << endl;
                     CloseHandle(newstdout);
                     CloseHandle(read_stdout);
                     return false;
@@ -101,7 +101,7 @@ bool vbm_popen(string arg_list, char * buffer=NULL, int nSize=1024,
 
         if (!CreateProcess( NULL, (LPTSTR)command.c_str(), NULL, NULL, TRUE,
                                     CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
-                fprintf(stderr,"CreateProcess Failed!");
+                cerr << "ERROR: CreateProcess failed!" << endl;
                 if (buffer!=NULL) {
                         CloseHandle(newstdout);
                         CloseHandle(read_stdout);
@@ -149,8 +149,8 @@ bool vbm_popen(string arg_list, char * buffer=NULL, int nSize=1024,
     
         fp = popen(command.c_str(), "r");
         if (fp == NULL) {
-            fprintf(stderr,"ERROR: vbm_popen popen failed!\n");
-            return false;
+                cerr << "ERROR: vbm_popen failed" << endl;
+                return false;
         }
 
         memset(buffer, 0, nSize);
@@ -196,13 +196,12 @@ void VM::create()
         //createvm
         arg_list = "createvm --name " + virtual_machine_name + " --ostype Linux26 --register";
         if (!vbm_popen(arg_list)) {
-                if (debug_level >= 1) {
-                        fprintf(stderr, "ERROR: Create VM method: createvm failed!\n");
-                        fprintf(stderr, "ERROR: %s\n",arg_list.c_str());
+                cerr << "ERROR: Create VM method -> createvm failed! Aborting" << endl;
+                cerr << "ERROR: " << arg_list << endl;
+                if (debug_level >= 3) {
+                        cerr << "NOTICE: Removing registered VM because to clean the system" << endl; 
                 }
-                if (debug_level >= 3) fprintf(stderr, "NOTICE: Cleaning registered VM from a failure...\n");
                 remove();
-                if (debug_level >= 1) fprintf(stderr, "ERROR: createvm() failed. Aborting\n");
                 boinc_finish(1);
         }
     
@@ -221,7 +220,7 @@ void VM::create()
         // Enable port-forwarding if compiled with the CernVM-Graphics
         #ifdef APP_GRAPHICS
             if (debug_level >= 4) {
-                fprintf(stderr,"INFO: Enabling Port Forwarding in the Virtual Machine\n");
+                    cerr << "INFO: Enabling Port Forwarding in the Virtual Machine" << endl;
             }
             arg_list.clear();
             arg_list = " modifyvm " + virtual_machine_name + \
@@ -244,14 +243,10 @@ void VM::create()
                    + disk_path;
 
         if (!vbm_popen(arg_list)) {
-                if (debug_level >= 1) {
-                        fprintf(stderr, "ERROR: Create storageattach failed!\n");
-                        fprintf(stderr, "ERROR: %s\n",arg_list.c_str());
-                        fprintf(stderr, "ERROR: storageattach() Aborting\n");
-                }
+                cerr << "ERROR: Create storageattach failed! Aborting" << endl;
+                cerr << "ERROR: " << arg_list << endl;
                 remove();
                 boinc_finish(1);
-                exit(0);
         }
 
         // Create VM
@@ -263,10 +258,7 @@ void VM::create()
                 f.close();
         }
         else {
-                if (debug_level >=1) {
-                    fprintf(stderr, "ERROR: Saving VM name failed. Details: ofstream failed!\n");
-                    fprintf(stderr, "ERROR: VM_NAME Aborting\n");
-                }
+                cerr << "ERROR: Saving VM name failed! Details -> ofstream failed! Aborting" << endl;
                 boinc_finish(1);
         }
 }
@@ -297,8 +289,8 @@ void VM::throttle()
                 if (parse_double(aid.project_preferences, "<max_vm_cpu_pct>", 
                                                                     max_vm_cpu_pct)) {
                         if (debug_level >= 3) {
-                            fprintf(stderr, "NOTICE: Maximum usage of CPU: %f\n", max_vm_cpu_pct);
-                            fprintf(stderr, "NOTICE: Setting how much CPU time the virtual CPU can use: %i\n", int(max_vm_cpu_pct));
+                                cerr << "NOTICE: Maximum usage of CPU: " << max_vm_cpu_pct << endl;
+                                cerr << "NOTICE: Setting how much CPU time the virtual CPU can use: " << max_vm_cpu_pct << endl;
                         }
 
                         std::stringstream out;
@@ -306,10 +298,12 @@ void VM::throttle()
     
                         arg_list = " controlvm " + virtual_machine_name + " cpuexecutioncap " + out.str();
                         if (!vbm_popen(arg_list)) {
-                            if (debug_level >= 1) fprintf(stderr, "ERROR: Impossible to set up CPU percentage usage limit\n");
+                                cerr << "ERROR: Impossible to set up CPU percentage usage limit" << endl;
                         }
                         else {
-                            if (debug_level >= 3) fprintf(stderr, "NOTICE: Success!\n");
+                            if (debug_level >= 3) {
+                                    cerr << "NOTICE: Success!" << endl;
+                            }
                         }
                 }
         }
@@ -325,19 +319,16 @@ void VM::start(bool vrde=false, bool headless=false)
         else arg_list = " startvm " + virtual_machine_name;
         if (!vbm_popen(arg_list)) {
                 start_err_number += 1;
-                if (debug_level >= 1) {
-                        fprintf(stderr, "ERROR: Impossible to start the VM, seems to be locked %i time\n", start_err_number);
-                        if (debug_level >= 3 ) fprintf(stderr, "NOTICE: Waiting 2 seconds to unlock the VM\n");
-                        boinc_sleep(2);
+                cerr << "ERROR: Impossible to start the VM, seems to be locked " << start_err_number << " time" << endl;
+
+                if (debug_level >= 3 ) {
+                        cerr << "NOTICE: Waiting 2 seconds to unlock the VM" << endl;
                 }
+                boinc_sleep(2);
     
                 if (start_err_number > 4) {
-                        if (debug_level >= 1) {
-                                fprintf(stderr,"ERROR: Impossible to start the VM after %i times\n", start_err_number);
-                                fprintf(stderr,"ERROR: Deleting the VM\n");
-                        
-                        }
-                        if (debug_level >= 3) fprintf(stderr,"NOTICE: Removing VM...\n");
+                        cerr << "ERROR: Impossible to start the VM after " << start_err_number << " times" << endl;
+                        cerr << "ERROR: Removing the VM" << endl;
                         remove();
                         boinc_end_critical_section();
                         boinc_finish(1);
@@ -422,9 +413,8 @@ void VM::savestate()
 {
         boinc_begin_critical_section();
         string arg_list("controlvm " + virtual_machine_name + " savestate");
-        if (!vbm_popen(arg_list))
-        {
-                if (debug_level >= 1) fprintf(stderr, "ERROR: The VM could not be saved.\n");
+        if (!vbm_popen(arg_list)) {
+                cerr << "ERROR: The VM could not be saved" << endl;
         }
         boinc_end_critical_section();
 }
@@ -438,10 +428,14 @@ void VM::remove()
     
         arg_list = " discardstate " + virtual_machine_name;
         if (vbm_popen(arg_list)) {
-                if (debug_level >= 3) fprintf(stderr,"NOTICE: VM state discarded!\n");
+                if (debug_level >= 3) {
+                        cerr << "NOTICE: VM state discarded!" << endl;
+                }
         }
         else {
-                if (debug_level >= 2) fprintf(stderr,"WARNING: it was not possible to discard the state of the VM.\n");
+                if (debug_level >= 2) {
+                        cerr << "WARNING: it was not possible to discard the state of the VM" << endl;
+                }
         }
     
         // Wait to allow to discard the VM state cleanly
@@ -451,10 +445,14 @@ void VM::remove()
         arg_list.clear();
         arg_list = " unregistervm " + virtual_machine_name + " --delete";
         if (vbm_popen(arg_list)) {
-                if (debug_level >= 3) fprintf(stderr, "NOTICE: VM unregistered and deleted via VBoxManage.\n");
+                if (debug_level >= 3) {
+                        cerr << "NOTICE: VM removed via VBoxManage" << endl;
+                }
         }
         else {
-            if (debug_level >= 2) fprintf(stderr, "WARNING: The VM could not be removed via VBoxManage.\n");
+            if (debug_level >= 2) {
+                    cerr << "WARNING: The VM could not be removed via VBoxManage" << endl;
+            }
         }
         
         // We test if we can remove the hard disk controller. If the command works, the cernvm.vmdk virtual disk will be also
@@ -463,13 +461,21 @@ void VM::remove()
         arg_list.clear();
         arg_list = " storagectl  " + virtual_machine_name + " --name \"IDE Controller\" --remove";
         if (vbm_popen(arg_list)) {
-            if (debug_level >= 3) fprintf(stderr, "NOTICE: Hard disk removed!\n");
+            if (debug_level >= 3) {
+                    cerr << "NOTICE: Hard disk removed!" << endl;
+            }
         }
-        else  if (debug_level >= 2) fprintf(stderr, "WARNING: it was not possible to remove the IDE controller.\n");
+        else {
+                if (debug_level >= 2) {
+                        cerr << "WARNING: it was not possible to remove the IDE controller" << endl;
+                }
+        } 
     
         #ifdef _WIN32
     	env = getenv("HOMEDRIVE");
-    	if (debug_level >= 3) fprintf(stderr, "NOTICE: I'm running in a Windows system...\n");
+    	if (debug_level >= 3) {
+                cerr << "NOTICE: I'm running in a Windows system..." << endl;
+        }
     	vboxXML = string(env);
     	env = getenv("HOMEPATH");
     	vboxXML = vboxXML + string(env);
@@ -484,13 +490,17 @@ void VM::remove()
             // GNU/Linux
             vboxXML = vboxXML + "/.VirtualBox/VirtualBox.xml";
             vboxfolder = string(env) + "/.VirtualBox/";
-            if (debug_level >= 3) fprintf(stderr,"NOTICE: I'm running in a GNU/Linux system...\n");
+            if (debug_level >= 3) {
+                    cerr << "NOTICE: I'm running in a GNU/Linux system..." << endl;
+            }
         }
         else {
             // Mac OS X
             vboxXML = vboxXML + "/Library/VirtualBox/VirtualBox.xml";
             vboxfolder = string(env) + "/Library/VirtualBox/";
-            if (debug_level >= 3) fprintf(stderr,"NOTICE: I'm running in a Mac OS X system...\n");
+            if (debug_level >= 3) {
+                    cerr << "NOTICE: I'm running in a Mac OS X system..." << endl;
+            }
         }
         #endif
     
@@ -509,13 +519,19 @@ void VM::remove()
                                 out << line + "\n";
                         else {
                                 vmRegistered = true; 
-                                if (debug_level >= 3) fprintf(stderr, "NOTICE: Obtaining the VM folder...\n");
+                                if (debug_level >= 3) {
+                                        cerr << "NOTICE: Obtaining the VM folder..." << endl;
+                                }
                                 found_init = line.find("src=");
                                 found_end = line.find(virtual_machine_name + ".vbox");
                                 if (found_end != string::npos)
-                                    if (debug_level >= 3) fprintf(stderr, "NOTICE: .vbox found at line %i in VirtualBox.xml file\n", line_n);
+                                    if (debug_level >= 3) {
+                                            cerr << "NOTICE: .vbox found at line: " << line_n << " in the VirtualBox.xml file" << endl;
+                                    }
                                 vmfolder = line.substr(found_init + 5, found_end - (found_init+5));
-                                if (debug_level >= 3) fprintf(stderr, "NOTICE: Done!\n");
+                                if (debug_level >= 3) {
+                                        cerr << "NOTICE: Done!" << endl;
+                                }
                         }
                         line_n +=1;
                 }
@@ -526,10 +542,14 @@ void VM::remove()
         // When the project is reset, we have to first unregister the VM, else we will have an error.
         arg_list = "unregistervm " + virtual_machine_name;
         if (!vbm_popen(arg_list)) {
-                if (debug_level >= 3) fprintf(stderr, "NOTICE: CernVM does not exist, so it is not necessary to unregister.\n");
+                if (debug_level >= 3) {
+                        cerr << "NOTICE: CernVM does not exist, so it is not necessary to unregister it" << endl;
+                }
         }
         else {
-            if (debug_level >= 3) fprintf(stderr, "NOTICE: Successfully unregistered the CernVM\n");
+            if (debug_level >= 3) {
+                    cerr << "NOTICE: Successfully unregistered the CernVM" << endl;
+            }
         }
 
         // Delete old VirtualBox.xml and replace with new one
@@ -541,20 +561,30 @@ void VM::remove()
     	if (vmRegistered) {
     	        vmfolder = "RMDIR \"" + vmfolder + "\" /s /q";
     	        if (system(vmfolder.c_str()) == 0) {
-    			if (debug_level >= 3) fprintf(stderr, "NOTICE: VM folder deleted!\n");
+    			if (debug_level >= 3) {
+                                cerr << "NOTICE: VM folder deleted!" << endl;
+                        }
                 }
     		else {
-                        if (debug_level >= 3) fprintf(stderr, "NOTICE: System was clean, nothing to delete.\n");
+                        if (debug_level >= 3) {
+                                cerr << "NOTICE: System was clean, nothing to delete" << endl;
+                        }
                 }
     	}
         else {
-                if (debug_level >= 3) fprintf(stderr, "NOTICE: VM was not registered, deleting old VM folders...\n");
+                if (debug_level >= 3) {
+                        cerr << "NOTICE: VM was not registered, deleting old VM folders..." << endl;
+                }
                 vmfolder = "RMDIR \"" + vboxfolder + virtual_machine_name + "\" /s /q";
                 if (system(vmfolder.c_str()) == 0) {
-                        if (debug_level >= 3) fprintf(stderr, "NOTICE: VM folder deleted!\n");
+                        if (debug_level >= 3) {
+                                cerr << "NOTICE: VM folder deleted!" << endl;
+                        }
                 }
                 else {
-                        if (debug_level >= 3) fprintf(stderr, "NOTICE: System was clean, nothing to delete.\n");
+                        if (debug_level >= 3) {
+                                cerr << "NOTICE: System was clean, nothing to delete" << endl;
+                        }
                 }
         }
     
@@ -563,24 +593,33 @@ void VM::remove()
         if (vmRegistered) {
                 vmfolder = "rm -rf \"" + vmfolder + "\"";
                 if (system(vmfolder.c_str()) == 0) {
-                    if (debug_level >= 3) fprintf(stderr, "NOTICE: VM folder deleted!\n");
+                    if (debug_level >= 3) {
+                            cerr << "NOTICE: VM folder deleted!" << endl;
+                    }
                 }
                 else {
-                    if (debug_level >= 3) fprintf(stderr, "NOTICE: System was clean, nothing to delete.\n");
+                    if (debug_level >= 3) {
+                            cerr << "NOTICE: System was clean, nothing to delete" << endl;
+                    }
                 }
         }
         else {
-                if (debug_level >= 3) fprintf(stderr,"NOTICE: VM was not registered, deleting old VM folders...\n");
+                if (debug_level >= 3) {
+                        cerr << "NOTICE: VM was not registered, deleting old VM folders..." << endl;
+                }
                 vmfolder = "rm -rf \"" + string(env) + "/VirtualBox VMs/" + virtual_machine_name + "\" ";
                 if ( system(vmfolder.c_str()) == 0 ) {
-                        if (debug_level >= 3) fprintf(stderr, "NOTICE: VM folder deleted!\n");
+                        if (debug_level >= 3) {
+                                cerr << "NOTICE: VM folder deleted!" << endl; 
+                        }
                 }
                 else {
-                        if (debug_level >= 3) fprintf(stderr, "NOTICE: System was clean, nothing to delete.\n");
+                        if (debug_level >= 3) {
+                                cerr << "NOTICE: System was clean, nothing to delete" << endl;
+                        }
                 }
         }
         #endif
-    
         boinc_end_critical_section();
 }
     
@@ -589,10 +628,12 @@ void VM::release()
     boinc_begin_critical_section();
     string arg_list("closemedium disk " + disk_path);
     if(!vbm_popen(arg_list)) {
-            if (debug_level >= 1) fprintf(stderr, "ERROR: It was impossible to release the virtual hard disk\n");
+            cerr << "ERROR: It was impossible to release the virtual hard disk" << endl;
     }
     else {
-            if (debug_level >= 3) fprintf(stderr, "NOTICE: Virtual Hard disk unregistered\n");
+            if (debug_level >= 3) {
+                    cerr << "NOTICE: Virtual hard disk unregistered" << endl;
+            }
     }
     boinc_end_critical_section();
 }
@@ -609,14 +650,17 @@ void VM::poll()
             // Increase the number of errors
             double wait_time = 5.0;
             poll_err_number += 1;
-            if (debug_level >= 1) fprintf(stderr, "ERROR: Get status from VM failed %i time!\n", poll_err_number);
-            if (debug_level >= 3) fprintf(stderr, "WARNING: Sleeping poll for %f seconds!\n", wait_time);
+            cerr << "ERROR: Get status from VM failed " << poll_err_number << " times!" << endl;
+            if (debug_level >= 3) {
+                    cerr << "WARNING: Sleeping poll for " << wait_time << " seconds" << endl;
+            }
             boinc_sleep(wait_time);
-            if (debug_level >= 3) fprintf(stderr, "WARNING: Resuming poll!\n");
+            if (debug_level >= 3) {
+                    cerr << "INFO: Resumming poll" << endl;
+            } 
             if (poll_err_number > 4) {
-                    if (debug_level >= 1) fprintf(stderr, "ERROR: Get status from VM has failed %i times!\n", poll_err_number);
-                    if (debug_level >= 1) fprintf(stderr, "ERROR: Aborting the execution\n");
-                    if (debug_level >= 3) fprintf(stderr, "NOTICE: poll() Aborting\n");
+                    cerr << "ERROR: Get status from the VM has failed " << poll_err_number << " times!" << endl;
+                    cerr << "ERROR: Aborting the execution" << endl;
                     remove();
                     boinc_end_critical_section();
                     boinc_finish(1);
@@ -636,15 +680,17 @@ void VM::poll()
                             current_time=time(NULL);
                             current_period += difftime (current_time,last_poll_point);
                             last_poll_point = current_time;
-                            if (debug_level >= 4) fprintf(stderr,"INFO: VM poll is running\n");
+                            if (debug_level >= 4) {
+                                    cerr << "INFO: VM poll is running" << endl;
+                            }
                     }
 
                     boinc_end_critical_section();
 
                     // Reset poweroff error counter, as the VM is running:
                     if ((debug_level >= 3) && (poweroff_err_number > 0)) {
-                            fprintf(stderr, "NOTICE: Resetting poweroff counter!\n");
-                            fprintf(stderr, "NOTICE: Virtual Machine up and running again\n");
+                            cerr << "NOTICE: Resetting poweroff counter!" << endl;
+                            cerr << "NOTICE: Virtual Machine up and running again" << endl;
                     }
 
                     poweroff_err_number = 0;
@@ -658,7 +704,9 @@ void VM::poll()
                             current_period += difftime (current_time, last_poll_point);
                     }
 
-                    if (debug_level >= 3) fprintf(stderr,"NOTICE: VM is paused!\n");
+                    if (debug_level >= 3) {
+                            cerr << "NOTICE: VM is paused!" << endl;
+                    }
                     boinc_end_critical_section();
                     return;
             }
@@ -666,20 +714,16 @@ void VM::poll()
             if (status.find("VMState=\"poweroff\"") != string::npos) {
                     poweroff_err_number += 1;
                     if (debug_level >= 3) {
-                            fprintf(stderr, "NOTICE: VM is powered off and it shouldn't (%i time!)\n", poweroff_err_number);
-                            fprintf(stderr, "NOTICE: Retrying to check in 2 seconds!\n");
+                            cerr << "WARNING: VM is powered off and it shouldn't (" << poweroff_err_number << " times!)" << endl;
+                            cerr << "WARNING: Retrying in 2 seconds" << endl;
                     }
-
                     boinc_sleep(2);
                     boinc_end_critical_section();
 
                     if (poweroff_err_number > 4) {
-                            if (debug_level >= 1) {
-                                    fprintf(stderr, "ERROR: VM has been powered off for the last %i poll calls!\n", poweroff_err_number);
-                                    fprintf(stderr, "ERROR: Cancelling Work Unit!\n");
-                            }
+                            cerr << "ERROR: VM has been powered off for the last " << poweroff_err_number << " poll calls!" << endl;
+                            cerr << "ERROR: Cancelling Work Unit!" << endl;
                             boinc_finish(1);
-                            exit(1);
                     }
             }
     }
@@ -688,19 +732,23 @@ void VM::poll()
 void poll_boinc_messages(VM& vm, BOINC_STATUS &status) 
 {
         if (status.reread_init_data_file) {
-                if (vm.debug_level >= 3) fprintf(stderr, "NOTICE: Project preferences changed\n");
+                if (vm.debug_level >= 3) {
+                        cerr << "NOTICE: Project preferences have changed" << endl;
+                }
                 vm.throttle();
         }
 
         if (status.no_heartbeat) {
-                if (vm.debug_level >= 3) fprintf(stderr, "NOTICE: BOINC no_heartbeat\n");
+                if (vm.debug_level >= 3) {
+                        cerr << "NOTICE: BOICN no_heartbeat" << endl;
+                }
                 vm.savestate();
                 boinc_temporary_exit(0);
         }
 
         if (status.quit_request) {
                 if (vm.debug_level >= 3) {
-                        fprintf(stderr, "NOTICE: Stopping VM and saving state!\n");
+                        cerr << "NOTICE: Suspending the VM" << endl;
                 }
                 vm.savestate();
                 boinc_temporary_exit(0);
@@ -708,20 +756,22 @@ void poll_boinc_messages(VM& vm, BOINC_STATUS &status)
 
         if (status.abort_request) {
                 if (vm.debug_level >= 3) {
-                    fprintf(stderr, "NOTICE: Aborting Work Unit!\n");    
-                    fprintf(stderr, "NOTICE: saving state of the vm and removing it...\n");
+                        cerr << "WARNING: User request to abort the WU" << endl;
                 }
                 vm.savestate();
                 vm.remove();
-                if (vm.debug_level >= 3) fprintf(stderr, "NOTICE: VM removed and task aborted\n");
                 boinc_finish(EXIT_ABORTED_BY_CLIENT);
         }
 
         if (status.suspended) {
-                if (vm.debug_level >= 4) fprintf(stderr,"INFO: Pausing VM!\n");
+                if (vm.debug_level >= 4) {
+                        cerr << "INFO: Pausing the VM!" << endl;
+                }
                 if (!vm.suspended) vm.pause();
         } else {
-                if (vm.debug_level >= 4) fprintf(stderr,"INFO: Resuming VM!\n");
+                if (vm.debug_level >= 4) {
+                        cerr << "INFO: Resuming the VM!" << endl;
+                }
                 if (vm.suspended) vm.resume();
         }
 }
