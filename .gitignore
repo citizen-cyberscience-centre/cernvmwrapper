@@ -1,9 +1,5 @@
-CernVMwrapper
-CernVMwrapper.o
-CernVMwarpper.ncb
-CernVMwarpper.sln
-CernVMwarpper.suo
-CernVMwarpper.vcproj
+cernvm-wrapper
+cernvm-wrapper.o
 cernvm.vmdk.gz
 libstdc++.a
 slots/
