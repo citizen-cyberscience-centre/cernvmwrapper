@@ -34,7 +34,10 @@ clean:
 distclean:
 	/bin/rm -f $(PROGS) *.o libstdc++.a
 
+floppyIO.o: floppyIO.cpp
+	g++ -c $(CXXFLAGS) -o floppyIO.o floppyIO.cpp
+
 cernvm-wrapper.o: vbox.h helper.h
 
-cernvm-wrapper: cernvm-wrapper.o libstdc++.a $(BOINC_LIB_DIR)/libboinc.a $(BOINC_API_DIR)/libboinc_api.a 
-	g++ $(CXXFLAGS) -o cernvm-wrapper cernvm-wrapper.o libstdc++.a -pthread -lboinc_api -lboinc -lz
+cernvm-wrapper: floppyIO.o cernvm-wrapper.o libstdc++.a $(BOINC_LIB_DIR)/libboinc.a $(BOINC_API_DIR)/libboinc_api.a 
+	g++ $(CXXFLAGS) -o cernvm-wrapper cernvm-wrapper.o floppyIO.o libstdc++.a -pthread -lboinc_api -lboinc -lz

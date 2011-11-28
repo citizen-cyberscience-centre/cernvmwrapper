@@ -1,5 +1,5 @@
 cernvm-wrapper
-cernvm-wrapper.o
+*.o
 cernvm.vmdk.gz
 libstdc++.a
 slots/

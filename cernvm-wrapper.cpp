@@ -134,9 +134,14 @@ int main(int argc, char** argv)
                 cerr << "VirtualBox version: " << version << endl;
         }
 
-        // Get BOINC APP INIT DATA to set how many cores will be used by the VM
+        // Get BOINC APP INIT DATA to set several values for the VM
         boinc_get_init_data(aid);
 
+        // BOINC user name and authenticator to authenticate users in Co-Pilot
+        vm.boinc_username = aid.user_name;
+        vm.boinc_authenticator = aid.authenticator;
+        
+        // Multi-core preferences to create the VM
         cerr << "Available cores: " << aid.host_info.p_ncpus << endl;
         cerr << "According to BOINC preferences use only this percentage of the number of cores: " << aid.global_prefs.max_ncpus_pct << " % " << endl;
 

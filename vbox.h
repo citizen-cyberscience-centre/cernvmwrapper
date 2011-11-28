@@ -7,6 +7,7 @@ Share::SharedData* Share::data;
 #endif
 
 #include "helper.h"
+#include "floppyIO.h"
 
 #define VM_NAME "VMName"
 #define CPU_TIME "CpuTime"
@@ -24,6 +25,10 @@ struct VM {
         string disk_name;
         string disk_path;
         string name_path;
+
+        // BOINC user name and password (in this case authenticator)
+        string boinc_username;
+        string boinc_authenticator;
         
         double current_period;
         time_t last_poll_point;
@@ -228,14 +233,13 @@ void VM::create()
             vbm_popen(arg_list);
         #endif
     
-        //storagectl
+        // Create the controller for the virtual hard disk
         arg_list.clear();
         arg_list = "storagectl " + virtual_machine_name + \
                    " --name \"IDE Controller\" --add ide --controller PIIX4";
         vbm_popen(arg_list);
     
-    
-        //storageattach
+        // Attach Virtual hard disk to the VM
         arg_list.clear();
         arg_list = "storageattach " + virtual_machine_name + \
                    " --storagectl \"IDE Controller\" \
@@ -248,6 +252,28 @@ void VM::create()
                 remove();
                 boinc_finish(1);
         }
+
+        // Create the controller for the virtual floppy image
+        FloppyIO floppy("floppy.img");
+        arg_list.clear();
+        arg_list = "storagectl " + virtual_machine_name + \
+                   " --name \"Floppy Controller\" --add floppy";
+        vbm_popen(arg_list);
+
+        // Attach the virtual foppy image
+        arg_list.clear();
+        arg_list = "storageattach " + virtual_machine_name + \
+                   " --storagectl \"Floppy Controller\" \
+                     --port 0 --device 0 --medium floppy.img";
+
+        if (!vbm_popen(arg_list)) {
+                cerr << "ERROR: Adding the Floppy image failed! Aborting" << endl;
+                cerr << "ERROR: " << arg_list << endl;
+                remove();
+                boinc_finish(1);
+        }
+
+        floppy.send(boinc_username + " <##> " + boinc_authenticator);
 
         // Create VM
         std::ofstream f(name_path.c_str());

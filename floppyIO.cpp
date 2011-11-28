@@ -1,36 +1,34 @@
-/* 
- * File:   FloppyIO.cpp
- * Author: Ioannis Charalampidis <ioannis.charalampidis AT cern DOT ch>
- *
- * Hypervisor-Virtual machine bi-directional communication
- * through floppy disk.
- *
- * This class provides the hypervisor-side of the script.
- * For the guest-side, check the perl scripts that
- * were available with this code.
- * 
- * Here is the layout of the floppy disk image (Example of 28k):
- *
- * +-----------------+------------------------------------------------+
- * | 0x0000 - 0x37FF |  Hypervisor -> Guest Buffer                    |
- * | 0x3800 - 0x6FFE |  Guest -> Hypervisor Buffer                    |
- * |     0x6FFF      |  "Data available for guest" flag byte          |
- * |     0x7000      |  "Data available for hypervisor" flag byte     |
- * +-----------------+------------------------------------------------+
- * 
- * Created on November 24, 2011, 12:30 PM
- */
+// File:   FloppyIO.cpp
+// Author: Ioannis Charalampidis <ioannis.charalampidis AT cern DOT ch>
+//
+// Hypervisor-Virtual machine bi-directional communication
+// through floppy disk.
+//
+// This class provides the hypervisor-side of the script.
+// For the guest-side, check the perl scripts that
+// were available with this code.
+// 
+// Here is the layout of the floppy disk image (Example of 28k):
+//
+// +-----------------+------------------------------------------------+
+// | 0x0000 - 0x37FF |  Hypervisor -> Guest Buffer                    |
+// | 0x3800 - 0x6FFE |  Guest -> Hypervisor Buffer                    |
+// |     0x6FFF      |  "Data available for guest" flag byte          |
+// |     0x7000      |  "Data available for hypervisor" flag byte     |
+// +-----------------+------------------------------------------------+
+// 
+// Created on November 24, 2011, 12:30 PM
 
-#include "FloppyIO.h"
+#include "floppyIO.h"
 
-/**
- * Floppy file constructor
- * 
- * This constructor opens the specified floppy disk image, fills everything
- * with zeroes and initializes the topology variables.
- * 
- * @param filename The filename of the floppy disk image
- */
+
+// Floppy file constructor
+// 
+// This constructor opens the specified floppy disk image, fills everything
+// with zeroes and initializes the topology variables.
+// 
+// @param filename The filename of the floppy disk image
+
 FloppyIO::FloppyIO(const char * filename) {
     
   // Open file
@@ -53,18 +51,17 @@ FloppyIO::FloppyIO(const char * filename) {
 
 }
 
-/**
- * Advanced Floppy file constructor
- * 
- * This constructor allows you to open a floppy disk image with extra flags.
- * 
- * F_NOINIT         Disables the reseting of the image file at open
- * F_NOCREATE       Does not truncate the file at open (If not exists, the file will be created)
- * F_SYNCHRONIZED   The communication is synchronized, meaning that the code will block until the 
- *                  data are read/written from the guest. [NOT YET IMPLEMENTED]
- * 
- * @param filename The filename of the floppy disk image
- */
+// Advanced Floppy file constructor
+// 
+// This constructor allows you to open a floppy disk image with extra flags.
+// 
+// F_NOINIT         Disables the reseting of the image file at open
+// F_NOCREATE       Does not truncate the file at open (If not exists, the file will be created)
+// F_SYNCHRONIZED   The communication is synchronized, meaning that the code will block until the 
+//                  data are read/written from the guest. [NOT YET IMPLEMENTED]
+// 
+// @param filename The filename of the floppy disk image
+
 FloppyIO::FloppyIO(const char * filename, int flags) {
     
   // Open file
@@ -112,11 +109,10 @@ FloppyIO::FloppyIO(const char * filename, int flags) {
 
 }
 
-/**
- * FloppyIO Destructor
- * 
- * Closes the file descriptor and releases used memory
- */
+
+// FloppyIO Destructor
+// Closes the file descriptor and releases used memory
+
 FloppyIO::~FloppyIO() {
     // Close file
     this->fIO->close();
@@ -125,12 +121,9 @@ FloppyIO::~FloppyIO() {
     delete this->fIO;
 }
 
-/**
- * Reset the floppy disk image
- * 
- * This function zeroes-out the contents of the FD image
- * 
- */
+// Reset the floppy disk image
+// This function zeroes-out the contents of the FD image
+ 
 void FloppyIO::reset() {
   this->fIO->seekp(0);
   char * buffer = new char[this->szFloppy];
@@ -138,12 +131,9 @@ void FloppyIO::reset() {
   delete[] buffer;      
 }
 
-/**
- * Send data to the floppy image I/O
- * 
- * @param data
- * @return 
- */
+// Send data to the floppy image I/O
+// @param data
+// @return 
 int FloppyIO::send(string strData) {
     // Prepare send buffer
     char * dataToSend = new char[this->szOutput];
@@ -172,11 +162,10 @@ int FloppyIO::send(string strData) {
     
 }
 
-/**
- * Receive the input buffer contents
- * 
- * @return Returns a string object with the file contents
- */
+
+// Receive the input buffer contents
+// @return Returns a string object with the file contents
+
 string FloppyIO::receive() {
     static string ansBuffer;
     char * dataToReceive = new char[this->szInput];
