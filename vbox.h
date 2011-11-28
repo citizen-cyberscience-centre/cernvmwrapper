@@ -273,7 +273,7 @@ void VM::create()
                 boinc_finish(1);
         }
 
-        floppy.send(boinc_username + " <##> " + boinc_authenticator);
+        floppy.send("BOINC_USERNAME=" + boinc_username + "\nBOINC_AUTHENTICATOR=" + boinc_authenticator);
 
         // Create VM
         std::ofstream f(name_path.c_str());
