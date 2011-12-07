@@ -26,13 +26,6 @@ ifneq ($(wildcard $(CERNVMGRAPHICS_DIR)),)
               -I$(CERNVMGRAPHICS_DIR)
 endif
 
-CC_PPC = /usr/bin/gcc-4.0
-CXX_PPC = /usr/bin/g++-4.0
-CXXFLAGS_PPC = -arch ppc -DMAC_OS_X_VERSION_MAX_ALLOWED=1030 -DMAC_OS_X_VERSION_MIN_REQUIRED=1030 \
-    -isysroot /Developer/SDKs/MacOSX10.4u.sdk \
-    $(CXXFLAGS_ALL) -fvisibility=hidden -fvisibility-inlines-hidden
-LDFLAGS_PPC = -Wl,-syslibroot,/Developer/SDKs/MacOSX10.4u.sdk,-arch,ppc
-
 CC_i386 = /usr/bin/gcc-4.0
 CXX_i386 = /usr/bin/g++-4.0
 CXXFLAGS_i386 = -arch i386 -DMAC_OS_X_VERSION_MAX_ALLOWED=1040 -DMAC_OS_X_VERSION_MIN_REQUIRED=1040 \
@@ -48,11 +41,11 @@ CXXFLAGS_x86_64 = -arch x86_64 -DMAC_OS_X_VERSION_MAX_ALLOWED=1050 -DMAC_OS_X_VE
 LDFLAGS_x86_64 = -Wl,-syslibroot,/Developer/SDKs/MacOSX10.5.sdk,-arch,x86_64
 
 OBJ = \
-    cernvm-wrapper_ppc.o \
     cernvm-wrapper_i386.o \
     cernvm-wrapper_x86_64.o \
+    floppyIO*.o \
 
-PROGS = cernvm-wrapper_ppc cernvm-wrapper_i386 cernvm-wrapper_x86_64 
+PROGS = cernvm-wrapper_i386 cernvm-wrapper_x86_64 
 
 all: $(PROGS)
 
@@ -62,33 +55,30 @@ clean:
 distclean:
 	/bin/rm -f $(PROGS) $(OBJ)
 
+floppyIO_i386: export MACOSX_DEPLOYMENT_TARGET=10.4
+floppyIO_x86_64: export MACOSX_DEPLOYMENT_TARGET=10.5
 
-cernvm-wrapper_ppc: export MACOSX_DEPLOYMENT_TARGET=10.3
 cernvm-wrapper_i386: export MACOSX_DEPLOYMENT_TARGET=10.4
 cernvm-wrapper_x86_64: export MACOSX_DEPLOYMENT_TARGET=10.5
 
-cernvm-wrapper_ppc.o: vbox.h helper.h cernvm-wrapper.cpp $(BOINC_BUILD_DIR)/libboinc_api.a $(BOINC_BUILD_DIR)/libboinc.a
-	$(CXX_PPC) -c $(CXXFLAGS_PPC) $(CXXFLAGS) cernvm-wrapper.cpp -o cernvm-wrapper_ppc.o
-
+target floppyIO_i386.o: MACOSX_DEPLOYMENT_TARGET=10.4
+floppyIO_i386.o: floppyIO.cpp
+	$(CXX_i386) -c $(CXXFLAGS_i386) $(CXXFLAGS) floppyIO.cpp -o floppyIO_i386.o
 
 target cernvm-wrapper_i386.o: MACOSX_DEPLOYMENT_TARGET=10.4
 cernvm-wrapper_i386.o: vbox.h helper.h cernvm-wrapper.cpp
 	$(CXX_i386) -c $(CXXFLAGS_i386) $(CXXFLAGS) cernvm-wrapper.cpp -o cernvm-wrapper_i386.o
 
+target cernvm-wrapper_x86_64.o: MACOSX_DEPLOYMENT_TARGET=10.5
+floppyIO_x86_64.o: floppyIO.cpp
+	 $(CXX_x86_64) -c $(CXXFLAGS_x86_64) $(CXXFLAGS) floppyIO.cpp -o floppyIO_x86_64.o
 
 target cernvm-wrapper_x86_64.o: MACOSX_DEPLOYMENT_TARGET=10.5
 cernvm-wrapper_x86_64.o: vbox.h helper.h cernvm-wrapper.cpp
 	$(CXX_x86_64) -c $(CXXFLAGS_x86_64) $(CXXFLAGS) cernvm-wrapper.cpp -o cernvm-wrapper_x86_64.o
 
+cernvm-wrapper_i386: floppyIO_i386.o cernvm-wrapper_i386.o $(BOINC_BUILD_DIR)/libboinc_api.a $(BOINC_BUILD_DIR)/libboinc.a
+	$(CXX_i386) $(CXXFLAGS_i386) $(CXXFLAGS) $(LDFLAGS_i386) -o cernvm-wrapper_i386 cernvm-wrapper_i386.o floppyIO_i386.o -lboinc_api -lboinc -lz
 
-cernvm-wrapper_ppc: cernvm-wrapper_ppc.o $(BOINC_BUILD_DIR)/libboinc_api.a $(BOINC_BUILD_DIR)/libboinc.a
-	$(CXX_PPC) $(CXXFLAGS_PPC) $(CXXFLAGS) $(LDFLAGS_PPC) -o cernvm-wrapper_ppc cernvm-wrapper_ppc.o -pthread -lboinc_api -lboinc -lz
-
-cernvm-wrapper_i386: cernvm-wrapper_i386.o $(BOINC_BUILD_DIR)/libboinc_api.a $(BOINC_BUILD_DIR)/libboinc.a
-	$(CXX_i386) $(CXXFLAGS_i386) $(CXXFLAGS) $(LDFLAGS_i386) -o cernvm-wrapper_i386 cernvm-wrapper_i386.o -lboinc_api -lboinc -lz
-
-
-cernvm-wrapper_x86_64: cernvm-wrapper_x86_64.o $(BOINC_BUILD_DIR)/libboinc_api.a $(BOINC_BUILD_DIR)/libboinc.a
-	$(CXX_x86_64) $(CXXFLAGS_x86_64) $(CXXFLAGS) $(LDFLAGS_x86_64) -o cernvm-wrapper_x86_64 cernvm-wrapper_x86_64.o -lboinc_api -lboinc -lz
-
-
+cernvm-wrapper_x86_64: floppyIO_x86_64.o cernvm-wrapper_x86_64.o $(BOINC_BUILD_DIR)/libboinc_api.a $(BOINC_BUILD_DIR)/libboinc.a
+	$(CXX_x86_64) $(CXXFLAGS_x86_64) $(CXXFLAGS) $(LDFLAGS_x86_64) -o cernvm-wrapper_x86_64 cernvm-wrapper_x86_64.o floppyIO_x86_64.o -lboinc_api -lboinc -lz
