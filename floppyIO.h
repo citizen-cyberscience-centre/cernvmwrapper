@@ -67,7 +67,7 @@ public:
     
     // Functions
     void        reset();
-    int         send(string strData);
+    void        send(string strData);
     string      receive();
     
     // Topology info

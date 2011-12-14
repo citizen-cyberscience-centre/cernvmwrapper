@@ -65,7 +65,7 @@ FloppyIO::FloppyIO(const char * filename) {
 FloppyIO::FloppyIO(const char * filename, int flags) {
     
   // Open file
-  _Ios_Openmode fOpenFlags = fstream::in | fstream::out;
+  ios_base::openmode fOpenFlags = fstream::in | fstream::out;
   if ((flags & F_NOCREATE) == 0) fOpenFlags = fstream::trunc;
   fstream *fIO = new fstream(filename, fOpenFlags);
   
@@ -134,7 +134,7 @@ void FloppyIO::reset() {
 // Send data to the floppy image I/O
 // @param data
 // @return 
-int FloppyIO::send(string strData) {
+void FloppyIO::send(string strData) {
     // Prepare send buffer
     char * dataToSend = new char[this->szOutput];
     memset(dataToSend, 0, this->szOutput);
