@@ -86,8 +86,18 @@ int main(int argc, char** argv)
         time_t init_secs = time (NULL); 
     
         for (i = 1; i < (unsigned int)argc; i++) {
-                // TODO: if (!strcmp(argv[i], "--graphics")) bool graphics = true;
-                if (!strcmp(argv[i], "--headless")) headless = true;
+                if (!strcmp(argv[i], "--headless")) {
+                        std::ifstream f("DisableHeadless.txt");
+                        if (f.is_open()) {
+                            if (vm.debug_level >= 3) {
+                                    cerr << "NOTICE: Disabling headless mode via DisableHeadless.txt file" << endl;
+                            }
+                            f.close();
+                        }
+                        else {
+                                headless = true;
+                        }
+                }
                 if (!strcmp(argv[i], "--debug")) {
                         std::istringstream ArgStream(argv[i+1]);
                         if (ArgStream >> vm.debug_level)
