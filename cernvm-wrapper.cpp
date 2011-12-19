@@ -150,10 +150,17 @@ int main(int argc, char** argv)
         // BOINC user name and authenticator to authenticate users in Co-Pilot
         vm.boinc_username = aid.user_name;
         vm.boinc_authenticator = aid.authenticator;
+
         // BOINC user and host total credit
-        vm.boinc_user_total_credit = aid.user_total_credit;
-        vm.boinc_host_total_credit = aid.host_total_credit;
-        
+        std::ostringstream tmp;
+        tmp  << aid.host_total_credit;
+        vm.boinc_host_total_credit = tmp.str();
+
+        // Clean the ostringstream
+        tmp.str("");
+        tmp << aid.user_total_credit;
+        vm.boinc_user_total_credit = tmp.str();
+
         // Multi-core preferences to create the VM
         cerr << "Available cores: " << aid.host_info.p_ncpus << endl;
         cerr << "According to BOINC preferences use only this percentage of the number of cores: " << aid.global_prefs.max_ncpus_pct << " % " << endl;
