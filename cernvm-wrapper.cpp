@@ -89,10 +89,12 @@ int main(int argc, char** argv)
                 if (!strcmp(argv[i], "--headless")) {
                         std::ifstream f("DisableHeadless.txt");
                         if (f.is_open()) {
-                            if (vm.debug_level >= 3) {
-                                    cerr << "NOTICE: Disabling headless mode via DisableHeadless.txt file" << endl;
-                            }
-                            f.close();
+                                cerr << endl;
+                                cerr << "************************************************************" << endl;
+                                cerr << "NOTICE: Disabling headless mode via DisableHeadless.txt file" << endl;
+                                cerr << "************************************************************" << endl;
+                                cerr << endl;
+                                f.close();
                         }
                         else {
                                 headless = true;

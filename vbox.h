@@ -224,16 +224,14 @@ void VM::create()
     
         vbm_popen(arg_list);
 
-        // Enable port-forwarding if compiled with the CernVM-Graphics
-        #ifdef APP_GRAPHICS
-            if (debug_level >= 4) {
-                    cerr << "INFO: Enabling Port Forwarding in the Virtual Machine" << endl;
-            }
-            arg_list.clear();
-            arg_list = " modifyvm " + virtual_machine_name + \
-                       " --natpf1  \"graphicsvm,tcp,127.0.0.1,7859,,80\"";
-            vbm_popen(arg_list);
-        #endif
+        // Enable port-forwarding for t4t-webapp
+        if (debug_level >= 4) {
+                cerr << "INFO: Enabling Port Forwarding in the Virtual Machine" << endl;
+        }
+        arg_list.clear();
+        arg_list = " modifyvm " + virtual_machine_name + \
+                   " --natpf1  \"graphicsvm,tcp,127.0.0.1,7859,,80\"";
+        vbm_popen(arg_list);
     
         // Create the controller for the virtual hard disk
         arg_list.clear();
