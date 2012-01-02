@@ -182,7 +182,7 @@ VM::VM() {
         poweroff_err_number = 0;
         start_err_number = 0;
         debug_level = 3;
-        n_cpus = 1;
+        n_cpus = 2;
         
         boinc_getcwd(buffer);
         disk_name = "cernvm.vmdk";
@@ -340,10 +340,11 @@ void VM::start(bool vrde=false, bool headless=false)
         // Start the VM in headless mode
         boinc_begin_critical_section();
         string arg_list="";
+        char buffer[1024];
     
         if (headless) arg_list = " startvm " + virtual_machine_name + " --type headless";
         else arg_list = " startvm " + virtual_machine_name;
-        if (!vbm_popen(arg_list)) {
+        if (!vbm_popen(arg_list, buffer, sizeof(buffer))) {
                 start_err_number += 1;
                 cerr << "ERROR: Impossible to start the VM, seems to be locked " << start_err_number << " time" << endl;
 
@@ -360,32 +361,86 @@ void VM::start(bool vrde=false, bool headless=false)
                         boinc_finish(1);
                 }
         }
-    
-        // Resetting the error counter
-        start_err_number = 0;
-        if (debug_level >=3) cerr << "NOTICE: VM has been started!" << endl;
-    
-        // Enable or disable VRDP for the VM: (by default is disabled)
-        if (vrde) {
-                arg_list.clear();
-                arg_list = " controlvm " + virtual_machine_name + " vrde on";
-        }
         else {
-                arg_list.clear(); 
-                arg_list = " controlvm " + virtual_machine_name + " vrde off";
-        }
+                // Check if two or more cores can be used as Virtualization Extensions are required
+                if (n_cpus > 1) {
+                        #ifdef _WIN32
+                        if (debug_level >= 3) {
+                                cerr << "NOTICE: I'm running in a Windows system..." << endl;
+                        }
+                        string vmlog = getenv("HOMEDRIVE");
+                        vmlog += getenv("HOMEPATH");
+                        vmlog +=  "\\VirtualBox VMs\\" + virtual_machine_name + "\\Logs\\VBox.log";
+                        #else 
+                        // *nix systems
+                        string env = getenv("HOME");
+    
+                        string vmlog = env + "/VirtualBox VMs/" + virtual_machine_name + "/Logs/VBox.log";
+                        if (debug_level >= 3) {
+                                cerr << "NOTICE: I'm running in a *nix system..." << endl;
+                        }
+                        #endif
+                        // Give time to VBoxManage to report if Virtualization Extensions are enabled
+                        boinc_sleep(2);
+                        // Read the error file
+                        std::ifstream errors(vmlog.c_str());
+                        if (errors.is_open()) {
+                                string line;
+                                cerr << "INFO: Checking if it is possible to use two or more cores in the VM..." << endl;
+                                while (!errors.eof()) {
+                                        std::getline(errors,line);
+                                        if (line.find("VERR_VMX_MSR_LOCKED_OR_DISABLED") != string::npos) {
+                                                cerr << "ERROR: Virtualization extensions are not supported, so multi-core extension has to be disabled!" << endl;
+                                                // Disabling the number of cores
+                                                string tmp;
+                                                boinc_sleep(5);
+                                                tmp = "modifyvm " + virtual_machine_name + " --cpus 1";
+                                                if (!vbm_popen(tmp)) {
+                                                        cerr << "ERROR: Disabling multi-core feature failed!" << endl;
+                                                        cerr << "ERROR: Aborting work unit" << endl;
+                                                        boinc_finish(1);
+                                                }       
+                                                else {
+                                                        n_cpus = 1;
+                                                        cerr << "INFO: Disabling multi-core feature worked! Re-starting VM..." << endl;
+                                                        vbm_popen(arg_list);
+                                                }
+                                                break;
+                                        }
+                                }
+                                errors.close();
+                        }
+                        else {
+                                cerr << "ERROR: Impossible to read the VBox.log file!" << endl;
+                        }
+                }
 
-        vbm_popen(arg_list);
+                // Resetting the error counter
+                start_err_number = 0;
+                if (debug_level >=3) cerr << "NOTICE: VM has been started!" << endl;
     
-        // If not running in Headless mode, don't allow the user to save, shutdown, power off or restore the VM
-        if (!headless) {
-                arg_list.clear();
-                // Don't allow the user to save, shutdown, power off or restore the VM
-                arg_list = " setextradata " + virtual_machine_name + " GUI/RestrictedCloseActions SaveState,Shutdown,PowerOff,Restore";
+                // Enable or disable VRDP for the VM: (by default is disabled)
+                if (vrde) {
+                        arg_list.clear();
+                        arg_list = " controlvm " + virtual_machine_name + " vrde on";
+                }
+                else {
+                        arg_list.clear(); 
+                        arg_list = " controlvm " + virtual_machine_name + " vrde off";
+                }
+
                 vbm_popen(arg_list);
-        }
     
-        throttle();
+                // If not running in Headless mode, don't allow the user to save, shutdown, power off or restore the VM
+                if (!headless) {
+                        arg_list.clear();
+                        // Don't allow the user to save, shutdown, power off or restore the VM
+                        arg_list = " setextradata " + virtual_machine_name + " GUI/RestrictedCloseActions SaveState,Shutdown,PowerOff,Restore";
+                        vbm_popen(arg_list);
+                }
+    
+                throttle();
+        }
         boinc_end_critical_section();
 }
 
