@@ -389,7 +389,7 @@ void VM::start(bool vrde=false, bool headless=false)
                                 cerr << "INFO: Checking if it is possible to use two or more cores in the VM..." << endl;
                                 while (!errors.eof()) {
                                         std::getline(errors,line);
-                                        if (line.find("VERR_VMX_MSR_LOCKED_OR_DISABLED") != string::npos) {
+                                        if ((line.find("VERR_VMX_MSR_LOCKED_OR_DISABLED") != string::npos) || (line.find("VERR_SVM_DISABLED") != string::npos)) {
                                                 cerr << "ERROR: Virtualization extensions are not supported, so multi-core extension has to be disabled!" << endl;
                                                 // Disabling the number of cores
                                                 string tmp;
