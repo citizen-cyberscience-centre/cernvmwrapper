@@ -153,8 +153,15 @@ int main(int argc, char** argv)
         vm.boinc_username = aid.user_name;
         vm.boinc_authenticator = aid.authenticator;
 
-        // BOINC user and host total credit
         std::ostringstream tmp;
+        tmp << aid.userid;
+        vm.boinc_userid = tmp.str();
+        tmp.str("");
+        tmp << aid.hostid;
+        vm.boinc_hostid = tmp.str();
+
+        // BOINC user and host total credit
+        tmp.str("");
         tmp  << aid.host_total_credit;
         vm.boinc_host_total_credit = tmp.str();
 

@@ -27,6 +27,8 @@ struct VM {
         string name_path;
 
         // BOINC user name and password (in this case authenticator)
+        string boinc_userid;
+        string boinc_hostid;
         string boinc_username;
         string boinc_authenticator;
         string boinc_user_total_credit;
@@ -273,7 +275,12 @@ void VM::create()
                 boinc_finish(1);
         }
 
-        floppy.send("BOINC_USERNAME=" + boinc_username + "\nBOINC_USER_TOTAL_CREDIT=" + boinc_user_total_credit + "\nBOINC_HOST_TOTAL_CREDIT=" + boinc_host_total_credit + "\nBOINC_AUTHENTICATOR=" + boinc_authenticator);
+        floppy.send("BOINC_USERNAME=" + boinc_username + 
+                    "\nBOINC_USER_TOTAL_CREDIT=" + boinc_user_total_credit + 
+                    "\nBOINC_USERID=" + boinc_userid +
+                    "\nBOINC_HOSTID=" + boinc_hostid +
+                    "\nBOINC_HOST_TOTAL_CREDIT=" + boinc_host_total_credit + 
+                    "\nBOINC_AUTHENTICATOR=" + boinc_authenticator);
 
         // Create VM
         std::ofstream f(name_path.c_str());
