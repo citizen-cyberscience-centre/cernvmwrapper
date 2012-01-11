@@ -86,20 +86,6 @@ int main(int argc, char** argv)
         time_t init_secs = time (NULL); 
     
         for (i = 1; i < (unsigned int)argc; i++) {
-                if (!strcmp(argv[i], "--headless")) {
-                        std::ifstream f("DisableHeadless.txt");
-                        if (f.is_open()) {
-                                cerr << endl;
-                                cerr << "************************************************************" << endl;
-                                cerr << "NOTICE: Disabling headless mode via DisableHeadless.txt file" << endl;
-                                cerr << "************************************************************" << endl;
-                                cerr << endl;
-                                f.close();
-                        }
-                        else {
-                                headless = true;
-                        }
-                }
                 if (!strcmp(argv[i], "--debug")) {
                         std::istringstream ArgStream(argv[i+1]);
                         if (ArgStream >> vm.debug_level)
@@ -148,6 +134,18 @@ int main(int argc, char** argv)
 
         // Get BOINC APP INIT DATA to set several values for the VM
         boinc_get_init_data(aid);
+
+        // Check if we have to run the VM in headless mode
+        if (aid.project_preferences) {
+                if (parse_bool(aid.project_preferences, "<vm_headless_mode>", headless)) {
+                        if (headless) {
+                                cerr << "NOTICE: User has set the VM to run in headless mode!" << endl;
+                        }
+                        else {
+                                cerr << "NOTICE: Running the VM in full mode!" << endl;
+                        }
+                }
+        }
 
         // BOINC user name and authenticator to authenticate users in Co-Pilot
         vm.boinc_username = aid.user_name;
