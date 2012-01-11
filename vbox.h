@@ -184,7 +184,7 @@ VM::VM() {
         poweroff_err_number = 0;
         start_err_number = 0;
         debug_level = 3;
-        n_cpus = 2;
+        n_cpus = 1;
         
         boinc_getcwd(buffer);
         disk_name = "cernvm.vmdk";

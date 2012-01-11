@@ -100,6 +100,11 @@ int main(int argc, char** argv)
                                 cerr << "NOTICE: The name of the VM is: " << vm.virtual_machine_name << endl;
                         }
                 }
+
+                if (!strcmp(argv[i], "--ncpus")) {
+                        vm.n_cpus = atoi(argv[i+1]);
+                }
+
         }
     
         // If the wrapper has not be called with the command line argument --vmname NAME, give a default name to the VM
@@ -175,20 +180,13 @@ int main(int argc, char** argv)
         tmp << aid.user_total_credit;
         vm.boinc_user_total_credit = tmp.str();
 
-        // Multi-core preferences to create the VM
-        cerr << "Available cores: " << aid.host_info.p_ncpus << endl;
-        cerr << "According to BOINC preferences use only this percentage of the number of cores: " << aid.global_prefs.max_ncpus_pct << " % " << endl;
-
-        double tmp_n_cpus = (aid.host_info.p_ncpus * (aid.global_prefs.max_ncpus_pct / 100));
-
-        if (tmp_n_cpus > 1) {
-                if (tmp_n_cpus >= 3) {
-                        cerr << "A maxixum of 3 cores will be used, no benefit with more" << endl;
-                        vm.n_cpus = 3;
-                }
-                else {
-                        vm.n_cpus = static_cast<int>(floor(tmp_n_cpus));
-                }
+        // Multi-core debug information
+        if (vm.n_cpus > 2) {
+                vm.n_cpus = 2;
+                cerr << "=========================================================================================" << endl;
+                cerr << "WARNING: This Virtual Machine will get any performance improvement with more than 2 cores" << endl;
+                cerr << "WARNING: Forcing VM to use only 2 cores" << endl;
+                cerr << "=========================================================================================" << endl;
         }
 
         cerr << "This work unit will use " << vm.n_cpus << " cores" << endl;
