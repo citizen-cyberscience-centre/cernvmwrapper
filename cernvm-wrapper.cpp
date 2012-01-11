@@ -129,7 +129,11 @@ int main(int argc, char** argv)
         char version[BUFSIZE];
     
         if (vbm_popen(arg_list, version, sizeof(version))) {
+                cerr << endl;
+                cerr << endl;
+                cerr << "====================================" << endl;
                 cerr << "VirtualBox version: " << version << endl;
+                cerr << "====================================" << endl;
         }
 
         // Get BOINC APP INIT DATA to set several values for the VM
@@ -137,14 +141,17 @@ int main(int argc, char** argv)
 
         // Check if we have to run the VM in headless mode
         if (aid.project_preferences) {
-                if (parse_bool(aid.project_preferences, "<vm_headless_mode>", headless)) {
-                        if (headless) {
-                                cerr << "NOTICE: User has set the VM to run in headless mode!" << endl;
-                        }
-                        else {
-                                cerr << "NOTICE: Running the VM in full mode!" << endl;
-                        }
+                if (parse_bool(aid.project_preferences, "vm_headless_mode", headless)) {
+                        cerr << "NOTICE: User has set the VM to run in headless mode!" << endl;
+                        headless = true;
                 }
+                else {
+                        cerr << "NOTICE: Running the VM in full mode!" << endl;
+                        headless = false;
+                }
+        }
+        else {
+                cerr << "WARNING: Impossible to get user preferences for the project" << endl;
         }
 
         // BOINC user name and authenticator to authenticate users in Co-Pilot
