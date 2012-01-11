@@ -101,7 +101,8 @@ int main(int argc, char** argv)
                         }
                 }
 
-                if (!strcmp(argv[i], "--ncpus")) {
+                // --nthreads to use BOINC mt class
+                if (!strcmp(argv[i], "--nthreads")) {
                         vm.n_cpus = atoi(argv[i+1]);
                 }
 
