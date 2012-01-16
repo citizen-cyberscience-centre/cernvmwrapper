@@ -640,8 +640,24 @@ void VM::remove()
             }
         }
 
-        // Delete old VirtualBox.xml and replace with new one
+        // Create a backup of old VirtualBox.xml and replace it with the new one
+        cerr << "==========================================================" << endl;
+        cerr << "INFO: Backing up previous VirtualBox.xml configuration ..." << endl;
+        string backup = vboxXML + ".bak";
+        std::ifstream f(backup.c_str());
+        if (f.is_open()) {
+                cerr << "WARNING: VirtualBox.xml.bak already exists, skipping this step" << endl;
+                f.close();
+        }
+        else {
+                std::rename(vboxXML.c_str(), backup.c_str());
+                cerr << "Backup Done! VirtualBox.xml.bak created with previous set up" << endl;
+
+        }
+        cerr << "==========================================================" << endl;
+        // Delete old VirtualBox.xml as a backup has been created
         std::remove(vboxXML.c_str());
+        // Rename the clean and new VirtualBox.xml configuration
         std::rename(vboxXMLNew.c_str(),vboxXML.c_str());
     
         // Remove remaining BOINC_VM folder
