@@ -241,12 +241,12 @@ void VM::create()
                    " --name \"IDE Controller\" --add ide --controller PIIX4";
         vbm_popen(arg_list);
     
-        // Attach Virtual hard disk to the VM
+        // Attach Virtual hard disk to the VM and create a new random UUID every time a VM is created.
         arg_list.clear();
         arg_list = "storageattach " + virtual_machine_name + \
                    " --storagectl \"IDE Controller\" \
                      --port 0 --device 0 --type hdd --medium " \
-                   + disk_path;
+                   + disk_path + " --setuuid \"\" ";
 
         if (!vbm_popen(arg_list)) {
                 cerr << "ERROR: Create storageattach failed! Aborting" << endl;
