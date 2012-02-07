@@ -1,3 +1,30 @@
+// This file is part of BOINC.
+// http://boinc.berkeley.edu
+// Copyright (C) 2008 University of California
+//
+// BOINC is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Lesser General Public License
+// as published by the Free Software Foundation,
+// either version 3 of the License, or (at your option) any later version.
+//
+// BOINC is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+// See the GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with BOINC.  If not, see <http://www.gnu.org/licenses/>.
+
+// wrapper.C
+// wrapper program for CernVM - lets you use CernVM on BOINC
+//
+// Handles:
+// - suspend/resume/quit/abort virtual machine 
+//
+// Contributor: Jie Wu <jiewu AT cern DOT ch>
+//
+// Contributor: Daniel Lombraña González <teleyinex AT gmail DOT com>
+
 #include <iostream>
 #include <string>
 
@@ -49,14 +76,13 @@ struct VM {
         bool exists();
         void throttle();
         void start(bool vrde, bool headless);
-        void kill();
         void pause();
         void savestate();
         void resume();
-        void Check();    
         void remove();
         void release(); 
         void poll();
+        bool is_status(string status);
 };
 
 //void write_cputime(double);
@@ -342,6 +368,51 @@ void VM::throttle()
         }
 }
 
+bool VM::is_status(string status) 
+{
+        boinc_begin_critical_section();
+        char buffer[1024];
+        int poll_err_number = 0;
+
+        string arg_list = "showvminfo " + virtual_machine_name + " --machinereadable";
+        if (!vbm_popen(arg_list, buffer, sizeof(buffer))) {
+                // Increase the number of errors
+                double wait_time = 5.0;
+                poll_err_number += 1;
+                cerr << "ERROR: Checking if VM is saved failed  " << poll_err_number << " times!" << endl;
+                if (debug_level >= 3) {
+                        cerr << "WARNING: Sleeping " + status + " check for " << wait_time << " seconds" << endl;
+                }
+                boinc_sleep(wait_time);
+                if (debug_level >= 3) {
+                        cerr << "INFO: Resumming " + status + " check" << endl;
+                } 
+                if (poll_err_number > 10) {
+                        cerr << "ERROR: Get " + status + " check from the VM has failed " << poll_err_number << " times!" << endl;
+                        cerr << "ERROR: Aborting the execution" << endl;
+                        remove();
+                        boinc_end_critical_section();
+                        boinc_finish(1);
+                        return false;
+                }
+        }
+        else {
+                string output;
+                output = buffer;
+
+                if (output.find("VMState=\"" + status + "\"") != string::npos) {
+                        return true;
+                        boinc_end_critical_section();
+                }
+                else {
+                        return false;
+                        boinc_end_critical_section();
+                }
+        
+        }
+
+}
+
 void VM::start(bool vrde=false, bool headless=false) 
 {
         // Start the VM in headless mode
@@ -453,59 +524,106 @@ void VM::start(bool vrde=false, bool headless=false)
         boinc_end_critical_section();
 }
 
-void VM::kill() 
-{
-        boinc_begin_critical_section();
-        string arg_list("controlvm " + virtual_machine_name + " poweroff");
-        vbm_popen(arg_list);
-        boinc_end_critical_section();
-}
-
 void VM::pause() 
 {
+
         boinc_begin_critical_section();
-        string arg_list("controlvm " + virtual_machine_name + " pause");
-        if (vbm_popen(arg_list)) {
-                suspended = true;
-                time_t current_time = time(NULL);
-                current_period += difftime (current_time, last_poll_point);
+        string pause_cmd = "controlvm " + virtual_machine_name + " pause";
+        int i = 0;
+        bool failed = true;
+        // Try to Pause the VM for 10 times
+        for (i;i<=9;i++) {
+                vbm_popen(pause_cmd);
+
+                if (is_status("paused")) {
+                        cerr << "INFO: VM paused!" << endl;
+                        suspended = true;
+                        time_t current_time = time(NULL);
+                        current_period += difftime (current_time, last_poll_point);
+                        failed = false;
+                        break;
+                }
+                else {
+                        cerr << "WARNING: The VM has not been paused yet. Retrying..." << endl;
+                        boinc_sleep(2);
+                }
         }
-    
+        if (failed) {
+                cerr << "ERROR: The VM has not been paused after 10 times!" << endl;
+                cerr << "ERROR: Aborting WU!" << endl;
+                remove();
+                boinc_finish(1);
+        }
+
         boinc_end_critical_section();
 }
 
 void VM::resume() 
 {
         boinc_begin_critical_section();
-        string arg_list("controlvm " + virtual_machine_name + " resume");
-        if (vbm_popen(arg_list)) {
-                suspended = false;
-                last_poll_point = time(NULL);
-        }
+        if (is_status("paused")) {
+                string arg_list("controlvm " + virtual_machine_name + " resume");
+                int i = 0;
+                bool failed = true;
+                // Try to resume the VM 10 times
+                for (i;i<=9;i++) {
+                        vbm_popen(arg_list);
+                        if (is_status("running")) {
+                                cerr << "INFO: VM resumed!" << endl;
+                                suspended = false;
+                                last_poll_point = time(NULL);
+                                failed = false;
+                                boinc_end_critical_section();
+                                break;
+                        }
+                        else {
+                                cerr << "WARNING: VM has not been resumed yet. Retrying..." << endl;
+                                boinc_sleep(2);
+                        }
+                }
 
-        boinc_end_critical_section();
+                if (failed) {
+                        cerr << "ERROR: The VM has not been resumed after 10 tries!" << endl;
+                        cerr << "ERROR: Aborting WU!" << endl;
+                        remove();
+                        boinc_end_critical_section();
+                        boinc_finish(1);
+                }
+        }
+        else {
+                cerr << "INFO: VM is not paused, so it is impossible to resume it!" << endl;
+                boinc_end_critical_section();
+        }
 }
 
-void VM::Check()
-{
-        boinc_begin_critical_section();
-        string arg_list;
-        if (suspended) {
-                arg_list= "controlvm " + virtual_machine_name + " resume";
-                vbm_popen(arg_list);
-        }
-        arg_list = "controlvm " + virtual_machine_name + " savestate";
-        vbm_popen(arg_list);
-        boinc_end_critical_section();
-}
+
 
 void VM::savestate()
 {
         boinc_begin_critical_section();
-        string arg_list("controlvm " + virtual_machine_name + " savestate");
-        if (!vbm_popen(arg_list)) {
-                cerr << "ERROR: The VM could not be saved" << endl;
+        string savestate_cmd = "controlvm " + virtual_machine_name + " savestate";
+        int i = 0;
+        bool failed = true;
+        // First try to save the state of the VM (sometimes may fail because the VM is locked)
+        for (i;i<=9;i++) {
+                vbm_popen(savestate_cmd);
+
+                if (is_status("saved")) {
+                        cerr << "INFO: VM state saved!" << endl;
+                        failed = false;
+                        break;
+                }
+                else {
+                        cerr << "WARNING: The VM has not been saved yet. Retrying..." << endl;
+                }
         }
+        if (failed) {
+                cerr << "ERROR: The VM has not been saved after 10 tries!" << endl;
+                cerr << "ERROR: Aborting WU!" << endl;
+                remove();
+                boinc_finish(1);
+        }
+
         boinc_end_critical_section();
 }
 
@@ -779,11 +897,11 @@ void VM::poll()
             status = buffer;
             if (status.find("VMState=\"running\"") != string::npos) {
                     if (suspended) {
-                            suspended=false;
-                            last_poll_point=time(NULL);
+                            suspended = false;
+                            last_poll_point = time(NULL);
                     }
                     else {
-                            current_time=time(NULL);
+                            current_time = time(NULL);
                             current_period += difftime (current_time,last_poll_point);
                             last_poll_point = current_time;
                             if (debug_level >= 4) {
@@ -801,12 +919,12 @@ void VM::poll()
 
                     poweroff_err_number = 0;
                     return;
-            }
+            } 
 
             if (status.find("VMState=\"paused\"") != string::npos) {
                     if (!suspended) {
-                            suspended=true;
-                            time_t current_time=time(NULL);
+                            suspended = true;
+                            time_t current_time = time(NULL);
                             current_period += difftime (current_time, last_poll_point);
                     }
 
