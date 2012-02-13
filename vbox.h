@@ -379,7 +379,7 @@ bool VM::is_status(string status)
                 // Increase the number of errors
                 double wait_time = 5.0;
                 poll_err_number += 1;
-                cerr << "ERROR: Checking if VM is saved failed  " << poll_err_number << " times!" << endl;
+                cerr << "ERROR: Checking if VM is " + status + " failed  " << poll_err_number << " times!" << endl;
                 if (debug_level >= 3) {
                         cerr << "WARNING: Sleeping " + status + " check for " << wait_time << " seconds" << endl;
                 }
