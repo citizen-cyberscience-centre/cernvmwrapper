@@ -549,10 +549,9 @@ void VM::pause()
                 }
         }
         if (failed) {
-                cerr << "ERROR: The VM has not been paused after 10 times!" << endl;
-                cerr << "ERROR: Aborting WU!" << endl;
-                remove();
-                boinc_finish(1);
+                cerr << "WARNING: The VM has not been paused after 10 times!" << endl;
+                cerr << "WARNING: BOINC_TEMPORARY_EXIT issued!" << endl;
+                boinc_temporary_exit(0);
         }
 
         boinc_end_critical_section();
@@ -583,15 +582,27 @@ void VM::resume()
                 }
 
                 if (failed) {
-                        cerr << "ERROR: The VM has not been resumed after 10 tries!" << endl;
-                        cerr << "ERROR: Aborting WU!" << endl;
-                        remove();
+                        cerr << "WARNING: The VM has not been resumed after 10 tries!" << endl;
+                        cerr << "WARNING: BOINC_TEMPORARY_EXIT issued!" << endl;
+                        cerr << "WARNING: Trying again in 5 minutes!" << endl;
                         boinc_end_critical_section();
-                        boinc_finish(1);
+                        boinc_temporary_exit(300);
                 }
         }
         else {
                 cerr << "INFO: VM is not paused, so it is impossible to resume it!" << endl;
+                cerr << "INFO: Checking if the VM is saved, so we can start it again..." << endl;
+
+                if (is_status("saved")) {
+                        cerr << "INFO: VM is saved, while it should be suspend!" << endl;
+                        cerr << "INFO: Restarting VM in any case..." << endl;
+                        boinc_temporary_exit(30);
+                }
+                else {
+                        cerr << "INFO: VM is not saved or paused, so something went wrong..." << endl;
+                        cerr << "INFO: Retrying in 5 minutes to check everything again!" << endl;
+                        boinc_temporary_exit(300);
+                }
                 boinc_end_critical_section();
         }
 }
@@ -618,10 +629,9 @@ void VM::savestate()
                 }
         }
         if (failed) {
-                cerr << "ERROR: The VM has not been saved after 10 tries!" << endl;
-                cerr << "ERROR: Aborting WU!" << endl;
-                remove();
-                boinc_finish(1);
+                cerr << "WARNING: The VM has not been saved after 10 tries!" << endl;
+                cerr << "WARNING: BOINC_TEMPORARY_EXIT!" << endl;
+                boinc_temporary_exit(0);
         }
 
         boinc_end_critical_section();
@@ -964,7 +974,7 @@ void poll_boinc_messages(VM& vm, BOINC_STATUS &status)
 
         if (status.no_heartbeat) {
                 if (vm.debug_level >= 3) {
-                        cerr << "NOTICE: BOICN no_heartbeat" << endl;
+                        cerr << "NOTICE: BOINC no_heartbeat" << endl;
                 }
                 vm.savestate();
                 boinc_temporary_exit(0);
