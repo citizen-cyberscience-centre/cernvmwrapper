@@ -965,12 +965,14 @@ void VM::poll()
 
 void poll_boinc_messages(VM& vm, BOINC_STATUS &status) 
 {
-        // if (status.reread_init_data_file) {
-        //         if (vm.debug_level >= 3) {
-        //                 cerr << "NOTICE: Project preferences have changed" << endl;
-        //         }
-        //         vm.throttle();
-        // }
+        if (status.reread_init_data_file) {
+                if (vm.debug_level >= 3) {
+                        cerr << "NOTICE: Project preferences have changed" << endl;
+                }
+                // Revert back the status to false
+                status.reread_init_data_file = false;
+                vm.throttle();
+        }
 
         if (status.no_heartbeat) {
                 if (vm.debug_level >= 3) {
