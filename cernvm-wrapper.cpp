@@ -84,6 +84,7 @@ int main(int argc, char** argv)
     
         // Registering time for progress accounting
         time_t init_secs = time (NULL); 
+        vm.debug_level = 6;                     //default for testing
     
         for (i = 1; i < (unsigned int)argc; i++) {
                 if (!strcmp(argv[i], "--debug")) {
@@ -107,7 +108,14 @@ int main(int argc, char** argv)
                 }
 
         }
-    
+        // debugging dump of arguments
+        if ( vm.debug_level > 5 ) {
+                cerr << "name:" << argv[0] << endl;
+                for (i = 1; i < (unsigned int)argc; i++) {
+                        cerr << "argv: " << argv[i] << endl;
+                }
+        }
+        
         // If the wrapper has not be called with the command line argument --vmname NAME, give a default name to the VM
         if (vm.virtual_machine_name.empty()) {
                 vm.virtual_machine_name = "BOINC_VM";
@@ -185,7 +193,7 @@ int main(int argc, char** argv)
         if (vm.n_cpus > 2) {
                 vm.n_cpus = 2;
                 cerr << "=========================================================================================" << endl;
-                cerr << "WARNING: This Virtual Machine will get any performance improvement with more than 2 cores" << endl;
+                cerr << "WARNING: This Virtual Machine won't get any performance improvement with more than 2 cores" << endl;
                 cerr << "WARNING: Forcing VM to use only 2 cores" << endl;
                 cerr << "=========================================================================================" << endl;
         }
@@ -218,6 +226,7 @@ int main(int argc, char** argv)
                 cerr << endl << "Initializing the VM..." << endl;
                 cerr << "Decompressing the VM" << endl;
                 retval = boinc_resolve_filename_s("cernvm.vmdk.gz", resolved_name);
+                cerr << "File being decompressed:" << resolved_name << endl;
                 if (retval) {
                         cerr << "ERROR: Impossible to resolve file name: cernvm.vmdk.gz" << endl;
                         cerr << "ERROR: Aborting WU" << endl;
