@@ -282,7 +282,18 @@ void VM::create()
         }
 
         // Create the controller for the virtual floppy image
-        FloppyIO floppy("floppy.img");
+        unsigned long int slug = time(NULL);
+        string floppy_name;  
+        std::stringstream out;
+        out << "floppy_" <<  slug << ".img";
+        floppy_name = out.str();
+        // Save the name of the floppy
+        ofstream myfile;
+        myfile.open("FloppyName.txt");
+        myfile << floppy_name << endl;
+        myfile.close();
+        // Create the Floppy image
+        FloppyIO floppy(floppy_name.c_str());
         arg_list.clear();
         arg_list = "storagectl " + virtual_machine_name + \
                    " --name \"Floppy Controller\" --add floppy";
@@ -292,7 +303,7 @@ void VM::create()
         arg_list.clear();
         arg_list = "storageattach " + virtual_machine_name + \
                    " --storagectl \"Floppy Controller\" \
-                     --port 0 --device 0 --medium floppy.img";
+                     --port 0 --device 0 --medium " + floppy_name.c_str();
 
         if (!vbm_popen(arg_list)) {
                 cerr << "ERROR: Adding the Floppy image failed! Aborting" << endl;
@@ -658,7 +669,7 @@ void VM::remove()
     
         // Wait to allow to discard the VM state cleanly
         boinc_sleep(2);
-    
+
         // Unregistervm command with --delete option. VBox 4.1 should work well
         arg_list.clear();
         arg_list = " unregistervm " + virtual_machine_name + " --delete";

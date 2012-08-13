@@ -238,7 +238,7 @@ int main(int argc, char** argv)
         else {
                 cerr << "VM exists, starting it..." << endl;
         }
-    
+
         time_t elapsed_secs = 0; 
         long int t = 0;
         double frac_done = 0, dif_secs = 0; 
