@@ -44,13 +44,14 @@ namespace Helper
                 vbox_path += "\\Oracle\\VirtualBox";
 
                 if (GetFileAttributes(vbox_path.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                        cerr << "NOTICE: Success!!! Installation PATH of VirtualBox is: " << vbox_path << endl;
+                        cerr << "NOTICE: Success!!! VirtualBox is installed" << endl;
+                        //cerr << "NOTICE: Success!!! Installation PATH of VirtualBox is: " << vbox_path << endl;
                         string new_path = "path=";
                         new_path += vbox_path;
                         new_path += ";";
                         new_path += old_path;
                         putenv(const_cast<char*>(new_path.c_str()));
-                        cerr << "INFO: New PATH " << getenv("path") << endl;
+                        // cerr << "INFO: New PATH " << getenv("path") << endl;
                         return (true);
                 }
                 else {
