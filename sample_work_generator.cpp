@@ -92,7 +92,7 @@ int make_job(char* inputfile) {
     wu.max_total_results = REPLICATION_FACTOR*8;
     wu.max_success_results = REPLICATION_FACTOR*4;
     // Specify the input file. If thre is no argument, use the last hard-coded version
-    if (inputfile != "") infiles[0] = inputfile;
+    if (strcmp(inputfile, "") != 0) infiles[0] = inputfile;
     else infiles[0] = "cernvm.vmdk.gz=cernvm_2.3.3_vmdk.gz";
 
     // Register the job with BOINC

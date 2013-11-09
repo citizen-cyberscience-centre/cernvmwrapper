@@ -269,6 +269,7 @@ VM::VM(){
     current_period=0;
     suspended=false;
     last_poll_point=0;
+    poll_err_number=0;
     
     //boinc_resolve_filename_s("cernvm.vmdk.gz",disk_path);
 //  fprintf(stderr,"%s\n",disk_path.c_str());
@@ -294,7 +295,6 @@ void VM::create() {
     string arg_list;
 
     //createvm
-    arg_list="";
     arg_list="createvm --name "+virtual_machine_name+ \
             " --ostype Linux26 --register";
     if(!vbm_popen(arg_list)){
@@ -310,7 +310,6 @@ void VM::create() {
     }
 
     //modifyvm
-    arg_list="";
     arg_list="modifyvm "+virtual_machine_name+ \
             " --memory 256 --acpi on --ioapic on \
             --boot1 disk --boot2 none --boot3 none --boot4 none \
@@ -329,7 +328,6 @@ void VM::create() {
 
 
     //storagectl
-    arg_list="";
     arg_list="storagectl "+virtual_machine_name+ \
             " --name \"IDE Controller\" --add ide --controller PIIX4";
     vbm_popen(arg_list);
@@ -341,7 +339,6 @@ void VM::create() {
     //    vbm_popen(arg_list);
     
     //storageattach
-    arg_list="";
     arg_list="storageattach "+virtual_machine_name+ \
             " --storagectl \"IDE Controller\" \
             --port 0 --device 0 --type hdd --medium " \
@@ -443,12 +440,10 @@ void VM::start(bool vrde=false, bool headless=false) {
     // Enable or disable VRDP for the VM: (by default is disabled)
     if (vrde)
     {
-        arg_list = "";
         arg_list = " controlvm " + virtual_machine_name + " vrde on";
     }
     else
     {
-        arg_list = "";
         arg_list = " controlvm " + virtual_machine_name + " vrde off";
     }
     vbm_popen(arg_list);
@@ -456,7 +451,6 @@ void VM::start(bool vrde=false, bool headless=false) {
     // If not running in Headless mode, don't allow the user to save, shutdown, power off or restore the VM
     if (!headless)
     {
-        arg_list = "";
         // Don't allow the user to save, shutdown, power off or restore the VM
         arg_list = " setextradata " + virtual_machine_name + " GUI/RestrictedCloseActions SaveState,Shutdown,PowerOff,Restore";
         vbm_popen(arg_list);
@@ -469,16 +463,14 @@ void VM::start(bool vrde=false, bool headless=false) {
 
 void VM::kill() {
     boinc_begin_critical_section();
-    string arg_list="";
-    arg_list="controlvm "+virtual_machine_name+" poweroff";
+    string arg_list="controlvm "+virtual_machine_name+" poweroff";
     vbm_popen(arg_list);
     boinc_end_critical_section();
 }
 
 void VM::pause() {
     boinc_begin_critical_section();
-    string arg_list="";
-    arg_list="controlvm "+virtual_machine_name+" pause";
+    string arg_list="controlvm "+virtual_machine_name+" pause";
     if(vbm_popen(arg_list)) {
         suspended = true;
         time_t current_time = time(NULL);
@@ -490,8 +482,7 @@ void VM::pause() {
 
 void VM::resume() {
     boinc_begin_critical_section();
-    string arg_list="";
-    arg_list="controlvm "+virtual_machine_name+" resume";
+    string arg_list="controlvm "+virtual_machine_name+" resume";
     if(vbm_popen(arg_list)) {
         suspended = false;
         last_poll_point=time(NULL);
@@ -515,8 +506,7 @@ void VM::Check(){
 void VM::savestate()
 {
     boinc_begin_critical_section();
-    string arg_list = "";
-    arg_list = "controlvm " + virtual_machine_name + " savestate";
+    string arg_list = "controlvm " + virtual_machine_name + " savestate";
     if (!vbm_popen(arg_list))
     {
         if (debug >= 1) fprintf(stderr,"ERROR: The VM could not be saved.\n");
@@ -527,18 +517,16 @@ void VM::savestate()
 
 void VM::remove(){
     boinc_begin_critical_section();
-    string arg_list="",vminfo, vboxfolder, vboxXML, vboxXMLNew, vmfolder, vmdisk;
+    string arg_list,vminfo, vboxfolder, vboxXML, vboxXMLNew, vmfolder, vmdisk;
     char * env;
     bool vmRegistered = false;
 
 
-    arg_list = "";
     arg_list = " discardstate " + virtual_machine_name;
     if (vbm_popen(arg_list)) if (debug >= 3) fprintf(stderr,"NOTICE: VM state discarded!\n");
     else if (debug >= 2) fprintf(stderr,"WARNING: it was not possible to discard the state of the VM.\n");
 
     // Unregistervm command with --delete option. VBox 4.1 should work well
-    arg_list = "";
     arg_list = " unregistervm " + virtual_machine_name + " --delete";
     if (vbm_popen(arg_list)) if (debug >= 3) fprintf(stderr, "NOTICE: VM unregistered and deleted via VBoxManage.\n");
     else if (debug >= 2) fprintf(stderr, "WARNING: The VM could not be removed via VBoxManage.\n");
@@ -546,7 +534,6 @@ void VM::remove(){
     // We test if we can remove the hard disk controller. If the command works, the cernvm.vmdk virtual disk will be also
     // removed automatically
 
-    arg_list = "";
     arg_list = " storagectl  " + virtual_machine_name + " --name \"IDE Controller\" --remove";
     if (vbm_popen(arg_list)) if (debug >= 3) fprintf(stderr, "NOTICE: Hard disk removed!\n");
     else  if (debug >= 2) fprintf(stderr,"WARNING: it was not possible to remove the IDE controller.\n");
@@ -641,18 +628,26 @@ void VM::remove(){
 	{
 		vmfolder = "RMDIR \"" + vmfolder + "\" /s /q";
 		if (system(vmfolder.c_str()) == 0)
+                {
 			if (debug >= 3) fprintf(stderr,"NOTICE: VM folder deleted!\n");
+                }
 		else
+                {
 			if (debug >= 3) fprintf(stderr,"NOTICE: System was clean, nothing to delete.\n");
+                }
 	}
     else
     {
             if (debug >= 3) fprintf(stderr,"NOTICE: VM was not registered, deleting old VM folders...\n");
 			vmfolder = "RMDIR \"" + vboxfolder + virtual_machine_name + "\" /s /q";
             if ( system(vmfolder.c_str()) == 0 )
+            {
                 if (debug >= 3) fprintf(stderr,"NOTICE: VM folder deleted!\n");
+            }
             else
+            {
                 if (debug >= 3) fprintf(stderr,"NOTICE: System was clean, nothing to delete.\n");
+            }
     }
 
 #else // GNU/Linux and Mac OS X 
@@ -661,7 +656,9 @@ void VM::remove(){
     {
         vmfolder = "rm -rf \"" + vmfolder + "\"";
         if ( system(vmfolder.c_str()) == 0 )
+        {
             if (debug >= 3) fprintf(stderr,"NOTICE: VM folder deleted!\n");
+        }
         else
         {
             if (debug >= 3) fprintf(stderr,"NOTICE: System was clean, nothing to delete.\n");
@@ -672,9 +669,13 @@ void VM::remove(){
             if (debug >= 3) fprintf(stderr,"NOTICE: VM was not registered, deleting old VM folders...\n");
             vmfolder = "rm -rf \"" + string(env) + "/VirtualBox VMs/" + virtual_machine_name + "\" ";
             if ( system(vmfolder.c_str()) == 0 )
+            {
                 if (debug >= 3) fprintf(stderr,"NOTICE: VM folder deleted!\n");
+            }
             else
+            {
                 if (debug >= 3) fprintf(stderr,"NOTICE: System was clean, nothing to delete.\n");
+            }
     }
 #endif
     boinc_end_critical_section();
@@ -682,8 +683,7 @@ void VM::remove(){
     
 void VM::release(){
     boinc_begin_critical_section();
-    string arg_list="";
-    arg_list="closemedium disk "+disk_path;
+    string arg_list="closemedium disk "+disk_path;
     if(!vbm_popen(arg_list))
     {
         if (debug >= 1) fprintf(stderr,"ERROR: It was impossible to release the virtual hard disk\n");
@@ -700,7 +700,6 @@ void VM::poll() {
     time_t current_time;
 
     
-    arg_list="";
     arg_list="showvminfo "+virtual_machine_name+" --machinereadable" ;
     if (!vbm_popen(arg_list,buffer,sizeof(buffer))){
         // Increase the number of errors
@@ -739,8 +738,8 @@ void VM::poll() {
                 if (debug >= 4) fprintf(stderr,"INFO: VM poll is running\n");
             }
             boinc_end_critical_section();
-            return;
             if (debug >= 3) fprintf(stderr,"NOTICE: VM is running!\n");  //testing
+            return;
         }
 
         if(status.find("VMState=\"paused\"") != string::npos){
@@ -882,9 +881,6 @@ int main(int argc, char** argv) {
 
     // The VM
     VM vm;
-
-    // Init the errors number
-    vm.poll_err_number = 0;
 
     // Registering time for progress accounting
     time_t init_secs = time (NULL); 
@@ -1092,11 +1088,9 @@ int main(int argc, char** argv) {
         fprintf(stderr,"VMName exists\n");
 
         bool VMexist=false;
-        string arg_list;
         if (debug >= 3) fprintf(stderr,"NOTICE: Virtual machine name %s\n",vm.virtual_machine_name.c_str());
 
-        arg_list="";
-        arg_list=" list vms";
+        string arg_list=" list vms";
         if (!vbm_popen(arg_list,buffer,sizeof(buffer))){
             if (debug >= 1) fprintf(stderr, "ERROR: CernVMManager list failed!\n");
             boinc_finish(1);
