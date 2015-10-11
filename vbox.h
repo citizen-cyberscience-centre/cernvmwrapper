@@ -354,7 +354,6 @@ void VM::throttle()
         cerr << "INFO: Number of cores: " << n_cpus << endl;
 
         if (aid.project_preferences) {
-                if (!aid.project_preferences) return;
                 double max_vm_cpu_pct = 100.0;
                 if (parse_double(aid.project_preferences, "<max_vm_cpu_pct>", 
                                                                     max_vm_cpu_pct)) {
@@ -412,12 +411,12 @@ bool VM::is_status(string status)
                 output = buffer;
 
                 if (output.find("VMState=\"" + status + "\"") != string::npos) {
-                        return true;
                         boinc_end_critical_section();
+                        return true;
                 }
                 else {
-                        return false;
                         boinc_end_critical_section();
+                        return false;
                 }
         
         }
